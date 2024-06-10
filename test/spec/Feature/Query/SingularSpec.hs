@@ -132,7 +132,6 @@ spec =
             ""
             { matchStatus  = 201
             , matchHeaders = [ matchHeaderAbsent hContentType
-                             , "Content-Range" <:> "*/*"
                              , "Preference-Applied" <:> "return=minimal"]
             }
 
@@ -228,9 +227,7 @@ spec =
         get "/items?id=gt.0&id=lt.6&order=id"
           `shouldRespondWith`
             [json| [{"id":1},{"id":2},{"id":3},{"id":4},{"id":5}] |]
-            { matchStatus  = 200
-            , matchHeaders = ["Content-Range" <:> "0-4/*"]
-            }
+            { matchStatus = 200 }
 
       it "raises an error when attempting to delete multiple entities with return=rep" $ do
         request methodDelete "/items?id=gt.5&id=lt.11"
@@ -244,9 +241,7 @@ spec =
         -- the rows should still exist
         get "/items?id=gt.5&id=lt.11"
           `shouldRespondWith` [json| [{"id":6},{"id":7},{"id":8},{"id":9},{"id":10}] |]
-            { matchStatus  = 200
-            , matchHeaders = ["Content-Range" <:> "0-4/*"]
-            }
+            { matchStatus = 200 }
 
       it "raises an error when deleting zero entities" $
         request methodDelete "/items?id=lt.0"

@@ -279,7 +279,7 @@ spec = describe "related queries" $ do
 
     it "works with count=exact" $ do
       request methodGet "/projects?select=name,clients(name)&clients=not.is.null"
-        [("Prefer", "count=exact")] ""
+        (rangeHdrsWithCount (ByteRangeFromTo 0 3)) ""
        `shouldRespondWith`
         [json|[
           {"name":"Windows 7", "clients":{"name":"Microsoft"}},
@@ -289,18 +289,20 @@ spec = describe "related queries" $ do
         ]|]
         { matchStatus  = 200
         , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-3/4" ]
+                         , "Content-Range" <:> "0-3/4"
+                         , "Preference-Applied" <:> "count=exact" ]
         }
       request methodGet "/projects?select=name,clients()&clients=is.null"
-        [("Prefer", "count=exact")] ""
+        (rangeHdrsWithCount (ByteRangeFromTo 0 0)) ""
        `shouldRespondWith`
         [json|[{"name":"Orphan"}]|]
         { matchStatus  = 200
         , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-0/1" ]
+                         , "Content-Range" <:> "0-0/1"
+                         , "Preference-Applied" <:> "count=exact" ]
         }
       request methodGet "/client?select=*,clientinfo(),contact()&clientinfo.other=ilike.*main*&contact.name=ilike.*tabby*&or=(clientinfo.not.is.null,contact.not.is.null)"
-        [("Prefer", "count=exact")] ""
+        (rangeHdrsWithCount (ByteRangeFromTo 0 1)) ""
        `shouldRespondWith`
         [json|[
           {"id":1,"name":"Walmart"},
@@ -308,12 +310,13 @@ spec = describe "related queries" $ do
         ]|]
         { matchStatus  = 200
         , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-1/2" ]
+                         , "Content-Range" <:> "0-1/2"
+                         , "Preference-Applied" <:> "count=exact" ]
         }
 
     it "works with count=planned" $ do
       request methodGet "/projects?select=name,clients(name)&clients=not.is.null"
-        [("Prefer", "count=planned")] ""
+        (("Prefer", "count=planned") : rangeHdrs (ByteRangeFromTo 0 3)) ""
        `shouldRespondWith`
         [json|[
           {"name":"Windows 7", "clients":{"name":"Microsoft"}},
@@ -323,18 +326,20 @@ spec = describe "related queries" $ do
         ]|]
         { matchStatus  = 206
         , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-3/1200" ]
+                         , "Content-Range" <:> "0-3/1200"
+                         , "Preference-Applied" <:> "count=planned" ]
         }
       request methodGet "/projects?select=name,clients()&clients=is.null"
-        [("Prefer", "count=planned")] ""
+        (("Prefer", "count=planned") : rangeHdrs (ByteRangeFromTo 0 0)) ""
        `shouldRespondWith`
         [json|[{"name":"Orphan"}]|]
         { matchStatus  = 200
         , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-0/1" ]
+                         , "Content-Range" <:> "0-0/1"
+                         , "Preference-Applied" <:> "count=planned" ]
         }
       request methodGet "/client?select=*,clientinfo(),contact()&clientinfo.other=ilike.*main*&contact.name=ilike.*tabby*&or=(clientinfo.not.is.null,contact.not.is.null)"
-        [("Prefer", "count=planned")] ""
+        (("Prefer", "count=planned") : rangeHdrs (ByteRangeFromTo 0 1)) ""
        `shouldRespondWith`
         [json|[
           {"id":1,"name":"Walmart"},
@@ -342,12 +347,13 @@ spec = describe "related queries" $ do
         ]|]
         { matchStatus  = 206
         , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-1/952" ]
+                         , "Content-Range" <:> "0-1/952"
+                         , "Preference-Applied" <:> "count=planned" ]
         }
 
     it "works with count=estimated" $ do
       request methodGet "/projects?select=name,clients(name)&clients=not.is.null"
-        [("Prefer", "count=estimated")] ""
+        (("Prefer", "count=estimated") : rangeHdrs (ByteRangeFromTo 0 3)) ""
        `shouldRespondWith`
         [json|[
           {"name":"Windows 7", "clients":{"name":"Microsoft"}},
@@ -357,18 +363,20 @@ spec = describe "related queries" $ do
         ]|]
         { matchStatus  = 206
         , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-3/1200" ]
+                         , "Content-Range" <:> "0-3/1200"
+                         , "Preference-Applied" <:> "count=estimated" ]
         }
       request methodGet "/projects?select=name,clients()&clients=is.null"
-        [("Prefer", "count=estimated")] ""
+        (("Prefer", "count=estimated") : rangeHdrs (ByteRangeFromTo 0 0)) ""
        `shouldRespondWith`
         [json|[{"name":"Orphan"}]|]
         { matchStatus  = 200
         , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-0/1" ]
+                         , "Content-Range" <:> "0-0/1"
+                         , "Preference-Applied" <:> "count=estimated" ]
         }
       request methodGet "/client?select=*,clientinfo(),contact()&clientinfo.other=ilike.*main*&contact.name=ilike.*tabby*&or=(clientinfo.not.is.null,contact.not.is.null)"
-        [("Prefer", "count=estimated")] ""
+        (("Prefer", "count=estimated") : rangeHdrs (ByteRangeFromTo 0 1)) ""
        `shouldRespondWith`
         [json|[
           {"id":1,"name":"Walmart"},
@@ -376,5 +384,6 @@ spec = describe "related queries" $ do
         ]|]
         { matchStatus  = 206
         , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-1/952" ]
+                         , "Content-Range" <:> "0-1/952"
+                         , "Preference-Applied" <:> "count=estimated" ]
         }

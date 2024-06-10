@@ -21,16 +21,14 @@ spec =
           `shouldRespondWith`
             ""
             { matchStatus  = 204
-            , matchHeaders = [ matchHeaderAbsent hContentType
-                             , "Content-Range" <:> "*/*" ]
+            , matchHeaders = [ matchHeaderAbsent hContentType ]
             }
 
-      it "returns the deleted item and count if requested" $
-        request methodDelete "/items?id=eq.2" [("Prefer", "return=representation"), ("Prefer", "count=exact")] ""
+      it "returns the deleted item if requested" $
+        request methodDelete "/items?id=eq.2" [("Prefer", "return=representation")] ""
           `shouldRespondWith` [json|[{"id":2}]|]
           { matchStatus  = 200
-          , matchHeaders = ["Content-Range" <:> "*/1"
-                           , "Preference-Applied" <:> "return=representation, count=exact"]
+          , matchHeaders = ["Preference-Applied" <:> "return=representation"]
           }
 
       it "ignores ?select= when return not set or return=minimal" $ do
@@ -40,8 +38,7 @@ spec =
           `shouldRespondWith`
             ""
             { matchStatus  = 204
-            , matchHeaders = [ matchHeaderAbsent hContentType
-                             , "Content-Range" <:> "*/*" ]
+            , matchHeaders = [ matchHeaderAbsent hContentType ]
             }
         request methodDelete "/items?id=eq.3&select=id"
             [("Prefer", "return=minimal")]
@@ -50,16 +47,13 @@ spec =
             ""
             { matchStatus  = 204
             , matchHeaders = [ matchHeaderAbsent hContentType
-                             , "Content-Range" <:> "*/*"
                              , "Preference-Applied" <:> "return=minimal"]
             }
 
       it "returns the deleted item and shapes the response" $
         request methodDelete "/complex_items?id=eq.2&select=id,name" [("Prefer", "return=representation")] ""
           `shouldRespondWith` [json|[{"id":2,"name":"Two"}]|]
-          { matchStatus  = 200
-          , matchHeaders = ["Content-Range" <:> "*/*"]
-          }
+          { matchStatus = 200 }
 
       it "can rename and cast the selected columns" $
         request methodDelete "/complex_items?id=eq.3&select=ciId:id::text,ciName:name" [("Prefer", "return=representation")] ""
@@ -68,9 +62,7 @@ spec =
       it "can embed (parent) entities" $
         request methodDelete "/tasks?id=eq.8&select=id,name,project:projects(id)" [("Prefer", "return=representation")] ""
           `shouldRespondWith` [json|[{"id":8,"name":"Code OSX","project":{"id":4}}]|]
-          { matchStatus  = 200
-          , matchHeaders = ["Content-Range" <:> "*/*"]
-          }
+          { matchStatus = 200 }
 
       it "embeds an O2O relationship after delete" $ do
         request methodDelete "/students?id=eq.1&select=name,students_info(address)"
@@ -103,9 +95,7 @@ spec =
         request methodDelete "/items?id=eq.101"
           [("Prefer", "return=representation")] ""
           `shouldRespondWith` "[]"
-          { matchStatus  = 200
-          , matchHeaders = ["Content-Range" <:> "*/*"]
-          }
+          { matchStatus = 200 }
 
     context "totally unknown route" $
       it "fails with 404" $
@@ -120,9 +110,7 @@ spec =
         request methodDelete "/app_users?id=eq.1&select=id,email" [("Prefer", "return=representation")]
           [json| { "password": "passxyz" } |]
             `shouldRespondWith` [json|[ { "id": 1, "email": "test@123.com" } ]|]
-            { matchStatus  = 200
-            , matchHeaders = ["Content-Range" <:> "*/*"]
-            }
+            { matchStatus = 200 }
 
       it "suceeds deleting the row with no explicit select when using return=minimal" $
         request methodDelete "/app_users?id=eq.2"

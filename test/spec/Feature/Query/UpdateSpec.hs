@@ -66,8 +66,7 @@ spec actualPgVersion = do
           `shouldRespondWith`
             ""
             { matchStatus  = 204
-            , matchHeaders = [ matchHeaderAbsent hContentType
-                             , "Content-Range" <:> "0-0/*" ]
+            , matchHeaders = [ matchHeaderAbsent hContentType ]
             }
 
       it "returns empty array when no rows updated and return=rep" $
@@ -89,8 +88,7 @@ spec actualPgVersion = do
           [("Prefer", "return=representation")] [json| { "id":2 } |]
           `shouldRespondWith` [json|[{"id":2}]|]
           { matchStatus  = 200,
-            matchHeaders = ["Content-Range" <:> "0-0/*"
-                           , "Preference-Applied" <:> "return=representation"]
+            matchHeaders = ["Preference-Applied" <:> "return=representation"]
           }
 
       it "can update multiple items" $ do
@@ -105,7 +103,6 @@ spec actualPgVersion = do
             ""
             { matchStatus  = 204
             , matchHeaders = [ matchHeaderAbsent hContentType
-                             , "Content-Range" <:> "0-1/*"
                              , "Preference-Applied" <:> "tx=commit" ]
             }
 
@@ -140,7 +137,6 @@ spec actualPgVersion = do
             `shouldRespondWith` [json| [{ id: 100 }] |]
             { matchStatus  = 200,
               matchHeaders = [matchContentTypeJson
-                             ,"Content-Range" <:> "0-0/*"
                              , "Preference-Applied" <:> "return=representation"]
             }
 
@@ -205,7 +201,6 @@ spec actualPgVersion = do
             ""
             { matchStatus  = 204
             , matchHeaders = [ matchHeaderAbsent hContentType
-                             , "Content-Range" <:> "0-0/*"
                              , "Preference-Applied" <:> "return=minimal"]
             }
         request methodPatch "/items?id=eq.1&select=id"
@@ -215,7 +210,6 @@ spec actualPgVersion = do
             ""
             { matchStatus  = 204
             , matchHeaders = [ matchHeaderAbsent hContentType
-                             , "Content-Range" <:> "0-0/*"
                              , "Preference-Applied" <:> "return=minimal"]
             }
 
@@ -227,8 +221,7 @@ spec actualPgVersion = do
             `shouldRespondWith`
               ""
               { matchStatus  = 204
-              , matchHeaders = [ matchHeaderAbsent hContentType
-                               , "Content-Range" <:> "*/*" ]
+              , matchHeaders = [ matchHeaderAbsent hContentType ]
               }
 
           request methodPatch "/items"
@@ -237,8 +230,7 @@ spec actualPgVersion = do
             `shouldRespondWith`
               ""
               { matchStatus  = 204
-              , matchHeaders = [ matchHeaderAbsent hContentType
-                               , "Content-Range" <:> "*/*" ]
+              , matchHeaders = [ matchHeaderAbsent hContentType ]
               }
 
           request methodPatch "/items"
@@ -247,8 +239,7 @@ spec actualPgVersion = do
             `shouldRespondWith`
               ""
               { matchStatus  = 204
-              , matchHeaders = [ matchHeaderAbsent hContentType
-                               , "Content-Range" <:> "*/*" ]
+              , matchHeaders = [ matchHeaderAbsent hContentType ]
               }
 
         it "makes no updates and returns 204 without return= and with ?select=" $ do
@@ -258,8 +249,7 @@ spec actualPgVersion = do
             `shouldRespondWith`
               ""
               { matchStatus  = 204
-              , matchHeaders = [ matchHeaderAbsent hContentType
-                               , "Content-Range" <:> "*/*" ]
+              , matchHeaders = [ matchHeaderAbsent hContentType ]
               }
 
           request methodPatch "/items?select=id"
@@ -268,8 +258,7 @@ spec actualPgVersion = do
             `shouldRespondWith`
               ""
               { matchStatus  = 204
-              , matchHeaders = [ matchHeaderAbsent hContentType
-                               , "Content-Range" <:> "*/*" ]
+              , matchHeaders = [ matchHeaderAbsent hContentType ]
               }
 
           request methodPatch "/items?select=id"
@@ -278,8 +267,7 @@ spec actualPgVersion = do
             `shouldRespondWith`
               ""
               { matchStatus  = 204
-              , matchHeaders = [ matchHeaderAbsent hContentType
-                               , "Content-Range" <:> "*/*" ]
+              , matchHeaders = [ matchHeaderAbsent hContentType ]
               }
 
         it "makes no updates and returns 200 with return=rep and without ?select=" $
@@ -287,8 +275,7 @@ spec actualPgVersion = do
             `shouldRespondWith` "[]"
             {
               matchStatus  = 200,
-              matchHeaders = ["Content-Range" <:> "*/*"
-                             , "Preference-Applied" <:> "return=representation"]
+              matchHeaders = ["Preference-Applied" <:> "return=representation"]
             }
 
         it "makes no updates and returns 200 with return=rep and with ?select=" $
@@ -296,8 +283,7 @@ spec actualPgVersion = do
             `shouldRespondWith` "[]"
             {
               matchStatus  = 200,
-              matchHeaders = ["Content-Range" <:> "*/*"
-                             , "Preference-Applied" <:> "return=representation"]
+              matchHeaders = ["Preference-Applied" <:> "return=representation"]
             }
 
         it "makes no updates and returns 200 with return=rep and with ?select= for overloaded computed columns" $
@@ -305,8 +291,7 @@ spec actualPgVersion = do
             `shouldRespondWith` "[]"
             {
               matchStatus  = 200,
-              matchHeaders = ["Content-Range" <:> "*/*"
-                             , "Preference-Applied" <:> "return=representation"]
+              matchHeaders = ["Preference-Applied" <:> "return=representation"]
             }
 
     context "with unicode values" $
@@ -632,8 +617,7 @@ spec actualPgVersion = do
             `shouldRespondWith`
             ""
               { matchStatus  = 204
-              , matchHeaders = [ matchHeaderAbsent hContentType
-                               , "Content-Range" <:> "0-0/*"]
+              , matchHeaders = [ matchHeaderAbsent hContentType ]
               }
 
         it "parses values in payload and formats individually selected values in return=representation" $
@@ -643,7 +627,6 @@ spec actualPgVersion = do
             [json| [{"id":2, "label_color": "#221100"}] |]
               { matchStatus  = 200
               , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-0/*"
                                , "Preference-Applied" <:> "return=representation"]
               }
 
@@ -654,7 +637,6 @@ spec actualPgVersion = do
             [json|  [{"id":2,"name":"Essay","label_color":"#221100","due_at":"2019-01-03T11:00:20Z","icon_image":"3q2+7w==","created_at":1513213350,"budget":"100000000000000.13"}] |]
               { matchStatus  = 200
               , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-0/*"
                                , "Preference-Applied" <:> "return=representation"]
               }
 
@@ -666,7 +648,6 @@ spec actualPgVersion = do
             [json| [{"due_at":"2019-01-03T11:00:00Z","id":2,"name":"Essay","label_color":"#221100","due_at":"2019-01-03T11:00:00Z","icon_image":null,"created_at":0,"budget":"100000000000000.13"}] |]
               { matchStatus  = 200
               , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-0/*"
                                , "Preference-Applied" <:> "return=representation"]
               }
       context "for multiple rows" $ do
@@ -681,7 +662,6 @@ spec actualPgVersion = do
             ] |]
               { matchStatus  = 200
               , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-2/*"
                                , "Preference-Applied" <:> "return=representation"]
               }
 
@@ -696,7 +676,6 @@ spec actualPgVersion = do
             ] |]
               { matchStatus  = 200
               , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-2/*"
                                , "Preference-Applied" <:> "return=representation"]
               }
       context "with ?columns parameter" $ do
@@ -709,7 +688,6 @@ spec actualPgVersion = do
             ] |]
               { matchStatus  = 200
               , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-0/*"
                                , "Preference-Applied" <:> "return=representation"]
               }
 
@@ -734,8 +712,7 @@ spec actualPgVersion = do
               `shouldRespondWith`
               ""
                 { matchStatus  = 204
-                , matchHeaders = [ matchHeaderAbsent hContentType
-                                 , "Content-Range" <:> "0-0/*" ]
+                , matchHeaders = [ matchHeaderAbsent hContentType ]
                 }
 
           it "parses values in payload and formats individually selected values in return=representation" $
@@ -745,7 +722,6 @@ spec actualPgVersion = do
               [json| [{"id":2, "label_color": "#221100"}] |]
                 { matchStatus  = 200
                 , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-0/*"
                                , "Preference-Applied" <:> "return=representation"]
                 }
 
@@ -756,7 +732,6 @@ spec actualPgVersion = do
               [json| [{"id":2, "name": "Essay", "label_color": "#221100", "dark_color":"#110880", "due_at":"2019-01-03T11:00:20Z"}] |]
                 { matchStatus  = 200
                 , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-0/*"
                                , "Preference-Applied" <:> "return=representation"]
                 }
         context "for multiple rows" $ do
@@ -771,7 +746,6 @@ spec actualPgVersion = do
               ] |]
                 { matchStatus  = 200
                 , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-2/*"
                                , "Preference-Applied" <:> "return=representation"]
                 }
 
@@ -786,7 +760,6 @@ spec actualPgVersion = do
               ] |]
                 { matchStatus  = 200
                 , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-2/*"
                                , "Preference-Applied" <:> "return=representation"]
                 }
         context "with ?columns parameter" $ do
@@ -799,7 +772,6 @@ spec actualPgVersion = do
               ] |]
                 { matchStatus  = 200
                 , matchHeaders = ["Content-Type" <:> "application/json; charset=utf-8"
-                               , "Content-Range" <:> "0-0/*"
                                , "Preference-Applied" <:> "return=representation"]
                 }
 

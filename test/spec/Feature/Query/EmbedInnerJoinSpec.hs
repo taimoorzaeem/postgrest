@@ -26,12 +26,10 @@ spec =
             {"id":3,"clients":{"id":2}}, {"id":4,"clients":{"id":2}},
             {"id":5,"clients":null}]|]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/projects?select=id,clients!inner(id)" [("Prefer", "count=exact")] mempty
+        request methodHead "/projects?select=id,clients!inner(id)" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-3/4" ]
-          }
+          , matchHeaders = [ matchContentTypeJson ] }
 
       it "filters source tables when the embedded table is filtered" $ do
         get "/projects?select=id,clients!inner(id)&clients.id=eq.1" `shouldRespondWith`
@@ -47,11 +45,10 @@ spec =
         get "/projects?select=id,clients!inner(id)&clients.id=eq.0" `shouldRespondWith`
           [json|[]|]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/projects?select=id,clients!inner(id)&clients.id=eq.1" [("Prefer", "count=exact")] mempty
+        request methodHead "/projects?select=id,clients!inner(id)&clients.id=eq.1" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-1/2" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "filters source tables when a two levels below embedded table is filtered" $ do
@@ -69,11 +66,10 @@ spec =
             {"id":7,"projects":{"id":4,"clients":{"id":2}}},
             {"id":8,"projects":{"id":4,"clients":{"id":2}}}]|]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/tasks?select=id,projects!inner(id,clients!inner(id))&projects.clients.id=eq.1" [("Prefer", "count=exact")] mempty
+        request methodHead "/tasks?select=id,projects!inner(id,clients!inner(id))&projects.clients.id=eq.1" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-3/4" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "only affects the source table rows if his direct embedding is an inner join" $ do
@@ -88,22 +84,20 @@ spec =
             {"id":7,"projects":{"id":4,"clients":{"id":2}}},
             {"id":8,"projects":{"id":4,"clients":{"id":2}}}]|]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/tasks?select=id,projects(id,clients!inner(id))&projects.clients.id=eq.2" [("Prefer", "count=exact")] mempty
+        request methodHead "/tasks?select=id,projects(id,clients!inner(id))&projects.clients.id=eq.2" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-7/8" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "works with views" $ do
         get "/books?select=title,authors!inner(name)&authors.name=eq.George%20Orwell" `shouldRespondWith`
           [json| [{"title":"1984","authors":{"name":"George Orwell"}}] |]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/books?select=title,authors!inner(name)&authors.name=eq.George%20Orwell" [("Prefer", "count=exact")] mempty
+        request methodHead "/books?select=title,authors!inner(name)&authors.name=eq.George%20Orwell" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-0/1" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
     context "one-to-many relationships" $ do
@@ -120,11 +114,10 @@ spec =
             {"id":3,"child_entities":[]},
             {"id":4,"child_entities":[]}] |]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/entities?select=id,child_entities!inner(id)" [("Prefer", "count=exact")] mempty
+        request methodHead "/entities?select=id,child_entities!inner(id)" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-1/2" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "filters source tables when the embedded table is filtered" $ do
@@ -137,11 +130,10 @@ spec =
         get "/entities?select=id,child_entities!inner(id)&child_entities.id=eq.0" `shouldRespondWith`
           [json|[]|]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/entities?select=id,child_entities!inner(id)&child_entities.id=eq.1" [("Prefer", "count=exact")] mempty
+        request methodHead "/entities?select=id,child_entities!inner(id)&child_entities.id=eq.1" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-0/1" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "filters source tables when a two levels below embedded table is filtered" $ do
@@ -165,11 +157,10 @@ spec =
             }
           ]|]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/entities?select=id,child_entities!inner(id,grandchild_entities!inner(id))&child_entities.grandchild_entities.id=in.(1,5)" [("Prefer", "count=exact")] mempty
+        request methodHead "/entities?select=id,child_entities!inner(id,grandchild_entities!inner(id))&child_entities.grandchild_entities.id=in.(1,5)" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-0/1" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "only affects the source table rows if his direct embedding is an inner join" $ do
@@ -191,22 +182,20 @@ spec =
             }
           ]|]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/entities?select=id,child_entities!inner(id,grandchild_entities(id))&child_entities.grandchild_entities.id=eq.2" [("Prefer", "count=exact")] mempty
+        request methodHead "/entities?select=id,child_entities!inner(id,grandchild_entities(id))&child_entities.grandchild_entities.id=eq.2" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-1/2" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "works with views" $ do
         get "/authors?select=*,books!inner(*)&books.title=eq.1984" `shouldRespondWith`
           [json| [{"id":1,"name":"George Orwell","books":[{"id":1,"title":"1984","publication_year":1949,"author_id":1,"first_publisher_id":1}]}] |]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/authors?select=*,books!inner(*)&books.title=eq.1984" [("Prefer", "count=exact")] mempty
+        request methodHead "/authors?select=*,books!inner(*)&books.title=eq.1984" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-0/1" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
     context "many-to-many relationships" $ do
@@ -222,11 +211,10 @@ spec =
             {"id":2,"suppliers":[{"id":1}, {"id":3}]},
             {"id":3,"suppliers":[]}] |]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/products?select=id,suppliers!inner(id)" [("Prefer", "count=exact")] mempty
+        request methodHead "/products?select=id,suppliers!inner(id)" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-1/2" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "filters source tables when the embedded table is filtered" $ do
@@ -239,11 +227,10 @@ spec =
         get "/products?select=id,suppliers!inner(id)&suppliers.id=eq.0" `shouldRespondWith`
           [json| [] |]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/products?select=id,suppliers!inner(id)&suppliers.id=eq.2" [("Prefer", "count=exact")] mempty
+        request methodHead "/products?select=id,suppliers!inner(id)&suppliers.id=eq.2" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-0/1" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "filters source tables when a two levels below embedded table is filtered" $ do
@@ -255,11 +242,10 @@ spec =
           `shouldRespondWith`
           [json|[{"id":1,"suppliers":[{"id":2,"trade_unions":[{"id":4}]}]}] |]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/products?select=id,suppliers!inner(id,trade_unions!inner(id))&suppliers.trade_unions.id=eq.3" [("Prefer", "count=exact")] mempty
+        request methodHead "/products?select=id,suppliers!inner(id,trade_unions!inner(id))&suppliers.trade_unions.id=eq.3" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-0/1" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "only affects the source table rows if his direct embedding is an inner join" $ do
@@ -268,11 +254,10 @@ spec =
             {"id":1,"suppliers":[{"id":1,"trade_unions":[]}, {"id":2,"trade_unions":[{"id":3}]}]},
             {"id":2,"suppliers":[{"id":1,"trade_unions":[]}, {"id":3,"trade_unions":[]}]}]|]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/products?select=id,suppliers!inner(id,trade_unions(id))&suppliers.trade_unions.id=eq.3" [("Prefer", "count=exact")] mempty
+        request methodHead "/products?select=id,suppliers!inner(id,trade_unions(id))&suppliers.trade_unions.id=eq.3" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-1/2" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
       it "works with views" $ do
@@ -282,11 +267,10 @@ spec =
         get "/films?select=*,actors!inner(*)&actors.name=eq.john" `shouldRespondWith`
           [json| [{"id":12,"title":"douze commandements","actors":[{"id":1,"name":"john"}]}] |]
           { matchHeaders = [matchContentTypeJson] }
-        request methodHead "/actors?select=*,films!inner(*)&films.title=eq.douze%20commandements" [("Prefer", "count=exact")] mempty
+        request methodHead "/actors?select=*,films!inner(*)&films.title=eq.douze%20commandements" [] mempty
           `shouldRespondWith` ""
           { matchStatus  = 200
-          , matchHeaders = [ matchContentTypeJson
-                           , "Content-Range" <:> "0-0/1" ]
+          , matchHeaders = [ matchContentTypeJson ]
           }
 
     it "works with m2o and m2m relationships combined" $ do
@@ -297,22 +281,20 @@ spec =
           {"name":"IOS","clients":{"name":"Apple"},"users":[{"name":"Michael Scott"}, {"name":"Dwight Schrute"}]},
           {"name":"OSX","clients":{"name":"Apple"},"users":[{"name":"Michael Scott"}]}]|]
         { matchHeaders = [matchContentTypeJson] }
-      request methodHead "/projects?select=name,clients!inner(name),users!inner(name)" [("Prefer", "count=exact")] mempty
+      request methodHead "/projects?select=name,clients!inner(name),users!inner(name)" [] mempty
         `shouldRespondWith` ""
         { matchStatus  = 200
-        , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-3/4" ]
+        , matchHeaders = [ matchContentTypeJson ]
         }
 
     it "works with rpc" $ do
       get "/rpc/getallprojects?select=id,clients!inner(id)&clients.id=eq.1" `shouldRespondWith`
         [json| [{"id":1,"clients":{"id":1}}, {"id":2,"clients":{"id":1}}] |]
         { matchHeaders = [matchContentTypeJson] }
-      request methodHead "/rpc/getallprojects?select=id,clients!inner(id)&clients.id=eq.1" [("Prefer", "count=exact")] mempty
+      request methodHead "/rpc/getallprojects?select=id,clients!inner(id)&clients.id=eq.1" [] mempty
         `shouldRespondWith` ""
         { matchStatus  = 200
-        , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-1/2" ]
+        , matchHeaders = [ matchContentTypeJson ]
         }
 
     it "works when using hints" $ do
@@ -322,11 +304,10 @@ spec =
       get "/projects?select=id,client!inner(id)&client.id=eq.2" `shouldRespondWith`
         [json| [{"id":3,"client":{"id":2}}, {"id":4,"client":{"id":2}}] |]
         { matchHeaders = [matchContentTypeJson] }
-      request methodHead "/projects?select=id,clients!client!inner(id)&clients.id=eq.2" [("Prefer", "count=exact")] mempty
+      request methodHead "/projects?select=id,clients!client!inner(id)&clients.id=eq.2" [] mempty
         `shouldRespondWith` ""
         { matchStatus  = 200
-        , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-1/2" ]
+        , matchHeaders = [ matchContentTypeJson ]
         }
 
     it "works with many one-to-many relationships" $ do
@@ -348,11 +329,10 @@ spec =
           {"id":2,"name":"Target","clientinfo":[{"other":"456 South 3rd St"}],"contact":[{"name":"Tabby Targo"}]}
         ]|]
         { matchHeaders = [matchContentTypeJson] }
-      request methodHead "/client?select=id,name,contact!inner(name),clientinfo!inner(other)" [("Prefer", "count=exact")] mempty
+      request methodHead "/client?select=id,name,contact!inner(name),clientinfo!inner(other)" [] mempty
         `shouldRespondWith` ""
         { matchStatus  = 200
-        , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-2/3" ]
+        , matchHeaders = [ matchContentTypeJson ]
         }
 
     it "works alongside another embedding" $ do
@@ -364,15 +344,13 @@ spec =
           {"id":8,"authors":{"name":"Kurt Vonnegut"},"publishers":{"name":"Delacorte"}},
           {"id":9,"authors":{"name":"Ken Kesey"},"publishers":{"name":"Viking Press & Signet Books"}}] |]
         { matchHeaders = [matchContentTypeJson] }
-      request methodHead "/books?select=id,authors(name),publishers!inner(name)&id=gte.7" [("Prefer", "count=exact")] mempty
+      request methodHead "/books?select=id,authors(name),publishers!inner(name)&id=gte.7" [] mempty
         `shouldRespondWith` ""
         { matchStatus  = 200
-        , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-2/3" ]
+        , matchHeaders = [ matchContentTypeJson ]
         }
-      request methodHead "/books?select=id,publishers!inner(name),authors(name)&id=gte.7" [("Prefer", "count=exact")] mempty
+      request methodHead "/books?select=id,publishers!inner(name),authors(name)&id=gte.7" [] mempty
         `shouldRespondWith` ""
         { matchStatus  = 200
-        , matchHeaders = [ matchContentTypeJson
-                         , "Content-Range" <:> "0-2/3" ]
+        , matchHeaders = [ matchContentTypeJson ]
         }

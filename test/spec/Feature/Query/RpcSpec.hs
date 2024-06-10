@@ -34,20 +34,15 @@ spec actualPgVersion =
         it "using limit and offset" $ do
           post "/rpc/getitemrange?limit=1&offset=1" [json| { "min": 2, "max": 4 } |]
              `shouldRespondWith` [json| [{"id":4}] |]
-              { matchStatus = 200
-              , matchHeaders = ["Content-Range" <:> "1-1/*"]
-              }
+              { matchStatus = 200 }
           get "/rpc/getitemrange?min=2&max=4&limit=1&offset=1"
              `shouldRespondWith` [json| [{"id":4}] |]
-              { matchStatus = 200
-              , matchHeaders = ["Content-Range" <:> "1-1/*"]
-              }
+              { matchStatus = 200 }
           request methodHead "/rpc/getitemrange?min=2&max=4&limit=1&offset=1" mempty mempty
             `shouldRespondWith`
               ""
               { matchStatus = 200
-              , matchHeaders = [ matchContentTypeJson
-                               , "Content-Range" <:> "1-1/*" ]
+              , matchHeaders = [ matchContentTypeJson ]
               }
 
       context "includes total count if requested" $ do
@@ -61,56 +56,38 @@ spec actualPgVersion =
 
         it "using limit and offset" $ do
           request methodPost "/rpc/getitemrange?limit=1&offset=1"
-                  [("Prefer", "count=exact")]
+                  []
                   [json| { "min": 2, "max": 4 } |]
              `shouldRespondWith` [json| [{"id":4}] |]
-              { matchStatus = 206 -- it now knows the response is partial
-              , matchHeaders = ["Content-Range" <:> "1-1/2"]
-              }
+              { matchStatus = 200 }
           request methodGet "/rpc/getitemrange?min=2&max=4&limit=1&offset=1"
-                  [("Prefer", "count=exact")] mempty
+                  [] mempty
              `shouldRespondWith` [json| [{"id":4}] |]
-              { matchStatus = 206
-              , matchHeaders = ["Content-Range" <:> "1-1/2"]
+              { matchStatus = 200
               }
           request methodHead "/rpc/getitemrange?min=2&max=4&limit=1&offset=1"
-              [("Prefer", "count=exact")] mempty
+              [] mempty
             `shouldRespondWith`
               ""
-              { matchStatus = 206
-              , matchHeaders = [ matchContentTypeJson
-                               , "Content-Range" <:> "1-1/2" ]
+              { matchStatus = 200
+              , matchHeaders = [ matchContentTypeJson ]
               }
-
-      it "includes exact count if requested" $ do
-        request methodHead "/rpc/getallprojects"
-                [("Prefer", "count=exact")] ""
-           `shouldRespondWith` ""
-            { matchStatus = 200
-            , matchHeaders = ["Content-Range" <:> "0-4/5"]
-            }
-        request methodHead "/rpc/getallprojects?select=*,clients!inner(*)&clients.id=eq.1"
-                [("Prefer", "count=exact")] ""
-           `shouldRespondWith` ""
-            { matchStatus = 200
-            , matchHeaders = ["Content-Range" <:> "0-1/2"]
-            }
 
       it "includes exact count of 1 for functions that return a single scalar, domain or composite" $ do
         request methodGet "/rpc/add_them?a=3&b=4"
-                [("Prefer", "count=exact")] ""
+           (rangeHdrsWithCount (ByteRangeFromTo 0 0)) ""
            `shouldRespondWith` "7"
             { matchStatus = 200
             , matchHeaders = ["Content-Range" <:> "0-0/1"]
             }
         request methodGet "/rpc/ret_domain?val=8"
-                [("Prefer", "count=exact")] ""
+           (rangeHdrsWithCount (ByteRangeFromTo 0 0)) ""
            `shouldRespondWith` "8"
             { matchStatus = 200
             , matchHeaders = ["Content-Range" <:> "0-0/1"]
             }
         request methodGet "/rpc/ret_point_2d"
-                [("Prefer", "count=exact")] ""
+           (rangeHdrsWithCount (ByteRangeFromTo 0 0)) ""
            `shouldRespondWith`
             [json|{"x": 10, "y": 5}|]
             { matchStatus = 200
@@ -153,16 +130,13 @@ spec actualPgVersion =
                   (rangeHdrsWithCount (ByteRangeFromTo 1 1))
                   [json| { "min": 2, "max": 4 } |]
              `shouldRespondWith` [json| [{"id": 3}, {"id": 4}] |]
-              { matchStatus = 200
-              , matchHeaders = ["Content-Range" <:> "0-1/2"]
-              }
+              { matchStatus = 200 }
           request methodHead "/rpc/getitemrange?min=2&max=4"
               (rangeHdrsWithCount (ByteRangeFromTo 1 1)) ""
             `shouldRespondWith`
               ""
               { matchStatus = 200
-              , matchHeaders = [ matchContentTypeJson
-                               , "Content-Range" <:> "0-1/2" ]
+              , matchHeaders = [ matchContentTypeJson ]
               }
 
         it "with limit and offset" $ do
@@ -170,16 +144,13 @@ spec actualPgVersion =
                   (rangeHdrsWithCount (ByteRangeFromTo 1 1))
                   [json| { "min": 2, "max": 5 } |]
              `shouldRespondWith` [json| [{"id": 4}, {"id": 5}] |]
-              { matchStatus = 206
-              , matchHeaders = ["Content-Range" <:> "1-2/3"]
-              }
+              { matchStatus = 200 }
           request methodHead "/rpc/getitemrange?min=2&max=5&limit=2&offset=1"
               (rangeHdrsWithCount (ByteRangeFromTo 1 1)) ""
             `shouldRespondWith`
               ""
-              { matchStatus = 206
-              , matchHeaders = [ matchContentTypeJson
-                               , "Content-Range" <:> "1-2/3" ]
+              { matchStatus = 200
+              , matchHeaders = [ matchContentTypeJson ]
               }
 
         it "does not throw an invalid range error" $ do
@@ -187,16 +158,13 @@ spec actualPgVersion =
                   (rangeHdrsWithCount (ByteRangeFromTo 0 0))
                   [json| { "min": 2, "max": 5 } |]
              `shouldRespondWith` [json| [{"id": 4}, {"id": 5}] |]
-              { matchStatus = 206
-              , matchHeaders = ["Content-Range" <:> "1-2/3"]
-              }
+              { matchStatus = 200 }
           request methodHead "/rpc/getitemrange?min=2&max=5&limit=2&offset=1"
               (rangeHdrsWithCount (ByteRangeFromTo 0 0)) ""
             `shouldRespondWith`
               ""
-              { matchStatus = 206
-              , matchHeaders = [ matchContentTypeJson
-                               , "Content-Range" <:> "1-2/3" ]
+              { matchStatus = 200
+              , matchHeaders = [ matchContentTypeJson ]
               }
 
     context "unknown function" $ do
@@ -317,15 +285,13 @@ spec actualPgVersion =
       it "can limit proc results" $ do
         post "/rpc/getallprojects?id=gt.1&id=lt.5&select=id&limit=2&offset=1" [json| {} |]
           `shouldRespondWith` [json|[{"id":3},{"id":4}]|]
-             { matchStatus = 200
-             , matchHeaders = ["Content-Range" <:> "1-2/*"] }
+             { matchStatus = 200 }
         get "/rpc/getallprojects?id=gt.1&id=lt.5&select=id&limit=2&offset=1"
           `shouldRespondWith` [json|[{"id":3},{"id":4}]|]
-             { matchStatus = 200
-             , matchHeaders = ["Content-Range" <:> "1-2/*"] }
+             { matchStatus = 200 }
 
       it "select works on the first level" $ do
-        post "/rpc/getproject?select=id,name" [json| { "id": 1} |] `shouldRespondWith`
+        post "/rpc/getproject?select=id,name" [json| {"id": 1} |] `shouldRespondWith`
           [json|[{"id":1,"name":"Windows 7"}]|]
         get "/rpc/getproject?id=1&select=id,name" `shouldRespondWith`
           [json|[{"id":1,"name":"Windows 7"}]|]

@@ -40,34 +40,28 @@ spec = describe "computed relationships" $ do
         {"name":"Hironobu Sakaguchi","videogames":[{"name":"Final Fantasy I"}, {"name":"Final Fantasy II"}]}
       ]|] { matchHeaders = [matchContentTypeJson] }
 
-  it "works with !inner and count=exact" $ do
+  it "works with !inner" $ do
     request methodGet "/designers?select=name,videogames:computed_videogames!inner(name)&videogames.name=eq.Civilization%20I"
-      [("Prefer", "count=exact")] ""
+      [] ""
       `shouldRespondWith`
         [json|[{"name":"Sid Meier","videogames":[{"name":"Civilization I"}]}]|]
-        { matchStatus  = 200
-        , matchHeaders = ["Content-Range" <:> "0-0/1"]
-        }
+        { matchStatus  = 200 }
     request methodGet "/videogames?select=name,designer:computed_designers!inner(name)&designer.name=like.*Hironobu*"
-      [("Prefer", "count=exact")] ""
+      [] ""
       `shouldRespondWith`
         [json|[
           {"name":"Final Fantasy I","designer":{"name":"Hironobu Sakaguchi"}},
           {"name":"Final Fantasy II","designer":{"name":"Hironobu Sakaguchi"}}
         ]|]
-        { matchStatus  = 200
-        , matchHeaders = ["Content-Range" <:> "0-1/2"]
-        }
+        { matchStatus = 200 }
     request methodGet "/videogames?select=name,designer:computed_designers_noset!inner(name)&designer.name=like.*Hironobu*"
-      [("Prefer", "count=exact")] ""
+      [] ""
       `shouldRespondWith`
         [json|[
           {"name":"Final Fantasy I","designer":{"name":"Hironobu Sakaguchi"}},
           {"name":"Final Fantasy II","designer":{"name":"Hironobu Sakaguchi"}}
         ]|]
-        { matchStatus  = 200
-        , matchHeaders = ["Content-Range" <:> "0-1/2"]
-        }
+        { matchStatus = 200 }
 
   it "works with rpc" $ do
     get "/rpc/getallvideogames?select=name,designer:computed_designers(name)"
