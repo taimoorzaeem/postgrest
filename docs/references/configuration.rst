@@ -628,7 +628,12 @@ jwt-role-claim-key
     # the DSL accepts characters that are alphanumerical or one of "_$@" as keys
     jwt-role-claim-key = ".postgrest.roles[1]"
 
-    # {"https://www.example.com/role": { "key": "author }}
+    # {"postgrest":{"roles": ["other", "author"]}}
+    # accepts string comparison operators, supported operators are "==", "!=", "^==", "$==", "*=="
+    # see: https://github.com/dfilatov/jspath#comparison-operators
+    jwt-role-claim-key = ".postgrest.roles[?(@ == "author")]"
+
+    # {"https://www.example.com/role": { "key": "author" }}
     # non-alphanumerical characters can go inside quotes(escaped in the config value)
     jwt-role-claim-key = ".\"https://www.example.com/role\".key"
 
