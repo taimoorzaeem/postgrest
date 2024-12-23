@@ -79,6 +79,7 @@ library
                       PostgREST.Plan.ReadPlan
                       PostgREST.Plan.Types
                       PostgREST.RangeQuery
+                      PostgREST.Sentry
                       PostgREST.Unix
                       PostgREST.ApiRequest
                       PostgREST.ApiRequest.Preferences
@@ -130,6 +131,7 @@ library
                     , postgresql-libpq          >= 0.10
                     , prometheus-client         >= 1.1.1 && < 1.2.0
                     , protolude                 >= 0.3.1 && < 0.4
+                    , raven-haskell             >= 0.1.4.1 && < 0.2
                     , regex-tdfa                >= 1.2.2 && < 1.4
                     , retry                     >= 0.7.4 && < 0.10
                     , scientific                >= 0.3.4 && < 0.4

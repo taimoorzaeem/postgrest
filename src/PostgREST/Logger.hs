@@ -10,22 +10,22 @@ module PostgREST.Logger
   , LoggerState
   ) where
 
-import           Control.AutoUpdate    (defaultUpdateSettings,
-                                        mkAutoUpdate, updateAction)
-import           Control.Debounce
-import qualified Data.ByteString.Char8 as BS
-
-import Data.Time (ZonedTime, defaultTimeLocale, formatTime,
-                  getZonedTime)
-
+import qualified Data.ByteString.Char8                as BS
 import qualified Network.Wai                          as Wai
 import qualified Network.Wai.Middleware.RequestLogger as Wai
 
+import Control.AutoUpdate        (defaultUpdateSettings,
+                                  mkAutoUpdate, updateAction)
+import Control.Debounce
+import Data.Time                 (ZonedTime, defaultTimeLocale, formatTime,
+                                  getZonedTime)
 import Network.HTTP.Types.Status (status400, status500)
 import System.IO.Unsafe          (unsafePerformIO)
+import System.Log.Raven.Types    (SentryService (..))
 
 import PostgREST.Config      (LogLevel (..))
 import PostgREST.Observation
+import PostgREST.Sentry      (logObsWithSentry)
 
 import Protolude
 
@@ -76,8 +76,8 @@ middleware logLevel getAuthRole = case logLevel of
       }
 
 -- All observations are logged except some that depend on the log-level
-observationLogger :: LoggerState -> LogLevel -> ObservationHandler
-observationLogger loggerState logLevel obs = case obs of
+observationLogger :: LoggerState -> LogLevel -> SentryService -> ObservationHandler
+observationLogger loggerState logLevel sentryService obs = case obs of
   o@(PoolAcqTimeoutObs _) -> do
     when (logLevel >= LogError) $ do
       logWithDebounce loggerState $
@@ -92,8 +92,9 @@ observationLogger loggerState logLevel obs = case obs of
     pure ()
   PoolRequestFullfilled ->
     pure ()
-  o ->
+  o -> do
     logWithZTime loggerState $ observationMessage o
+    logObsWithSentry sentryService o
 
 logWithZTime :: LoggerState -> Text -> IO ()
 logWithZTime loggerState txt = do

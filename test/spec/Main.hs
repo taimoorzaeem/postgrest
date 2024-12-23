@@ -18,6 +18,7 @@ import SpecHelper
 import qualified PostgREST.AppState as AppState
 import qualified PostgREST.Logger   as Logger
 import qualified PostgREST.Metrics  as Metrics
+import qualified PostgREST.Sentry   as Sentry
 
 import qualified Feature.Auth.AsymmetricJwtSpec
 import qualified Feature.Auth.AudienceJwtSecretSpec
@@ -87,10 +88,11 @@ main = do
   sockets <- AppState.initSockets testCfg
   loggerState <- Logger.init
   metricsState <- Metrics.init (configDbPoolSize testCfg)
+  sentryLogger <- Sentry.init (configSentryDSN testCfg)
 
   let
     initApp sCache config = do
-      appState <- AppState.initWithPool sockets pool config loggerState metricsState (const $ pure ())
+      appState <- AppState.initWithPool sockets pool config loggerState metricsState sentryLogger (const $ pure ())
       AppState.putPgVersion appState actualPgVersion
       AppState.putSchemaCache appState (Just sCache)
       return ((), postgrest (configLogLevel config) appState (pure ()))

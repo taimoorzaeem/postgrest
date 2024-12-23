@@ -1648,3 +1648,16 @@ def test_schema_cache_startup_load_with_in_db_config(defaultenv, metapostgrest):
     response = metapostgrest.session.post("/rpc/reset_db_schemas_config")
     assert response.text == ""
     assert response.status_code == 204
+
+def test_sentry_stderr_fallback(defaultenv, metapostgrest):
+    "verify that errors are logged to stderr when logs are not sent to sentry"
+
+    env = {
+        **defaultenv,
+        "PGRST_SENTRY_DSN": "https://1234abcd1234abcd1234abcd1234abcd@sentry.example.com/123456",
+    }
+
+    with run(env=env, no_startup_stdout=False) as postgrest:
+        response = postgrest.session.head("/")
+        output = sorted(postgrest.read_stdout(nlines=2))
+        assert "Sentry: " in output[0]

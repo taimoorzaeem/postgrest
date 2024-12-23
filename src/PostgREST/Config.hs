@@ -52,6 +52,7 @@ import Network.URI             (escapeURIString,
 import Numeric                 (readOct, showOct)
 import System.Environment      (getEnvironment)
 import System.Posix.Types      (FileMode)
+import Text.Regex.TDFA         ((=~))
 
 import PostgREST.Config.Database         (RoleIsolationLvl,
                                           RoleSettings)
@@ -113,6 +114,7 @@ data AppConfig = AppConfig
   , configRoleSettings             :: RoleSettings
   , configRoleIsoLvl               :: RoleIsolationLvl
   , configInternalSCSleep          :: Maybe Int32
+  , configSentryDSN                :: Maybe Text
   }
 
 data LogLevel = LogCrit | LogError | LogWarn | LogInfo | LogDebug
@@ -181,6 +183,7 @@ toText conf =
       ,("server-unix-socket-mode",   q . T.pack . showSocketMode)
       ,("admin-server-host",         q . configAdminServerHost)
       ,("admin-server-port",             maybe "\"\"" show . configAdminServerPort)
+      ,("sentry-dsn",                q . fromMaybe mempty . configSentryDSN)
       ]
 
     -- quote all app.settings
@@ -294,6 +297,7 @@ parser optPath env dbSettings roleSettings roleIsolationLvl =
     <*> pure roleSettings
     <*> pure roleIsolationLvl
     <*> optInt "internal-schema-cache-sleep"
+    <*> optValidDSN "sentry-dsn"
   where
     parseAppSettings :: C.Key -> C.Parser C.Config [(Text, Text)]
     parseAppSettings key = addFromEnv . fmap (fmap coerceText) <$> C.subassocs key C.value
@@ -374,6 +378,12 @@ parser optPath env dbSettings roleSettings roleIsolationLvl =
       optString k >>= \case
         Nothing   -> pure Nothing
         Just orig -> pure $ Just (T.strip <$> T.splitOn "," orig)
+
+    optValidDSN :: C.Key -> C.Parser C.Config (Maybe Text)
+    optValidDSN k = mfilter (\v -> (v /= "") && (v =~ regex :: Bool)) <$> overrideFromDbOrEnvironment C.optional k coerceText
+        where
+          regex :: Text
+          regex = "^https?://[0-9a-fA-F]{32,}@[a-zA-Z0-9][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}/[0-9]+$"
 
     optWithAlias :: C.Parser C.Config (Maybe a) -> C.Parser C.Config (Maybe a) -> C.Parser C.Config (Maybe a)
     optWithAlias orig alias =

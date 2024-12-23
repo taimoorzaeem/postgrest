@@ -46,19 +46,21 @@ import qualified Network.Socket             as NS
 import qualified PostgREST.Error            as Error
 import qualified PostgREST.Logger           as Logger
 import qualified PostgREST.Metrics          as Metrics
+import qualified PostgREST.Sentry           as Sentry
 import           PostgREST.Observation
 import           PostgREST.Version          (prettyVersion)
 import           System.TimeIt              (timeItT)
 
-import Control.AutoUpdate (defaultUpdateSettings, mkAutoUpdate,
-                           updateAction)
+import Control.AutoUpdate     (defaultUpdateSettings, mkAutoUpdate,
+                               updateAction)
 import Control.Debounce
-import Control.Retry      (RetryPolicy, RetryStatus (..), capDelay,
-                           exponentialBackoff, retrying,
-                           rsPreviousDelay)
-import Data.IORef         (IORef, atomicWriteIORef, newIORef,
-                           readIORef)
-import Data.Time.Clock    (UTCTime, getCurrentTime)
+import Control.Retry          (RetryPolicy, RetryStatus (..), capDelay,
+                               exponentialBackoff, retrying,
+                               rsPreviousDelay)
+import Data.IORef             (IORef, atomicWriteIORef, newIORef,
+                               readIORef)
+import Data.Time.Clock        (UTCTime, getCurrentTime)
+import System.Log.Raven.Types (SentryService (..))
 
 import PostgREST.Config                  (AppConfig (..),
                                           addFallbackAppName,
@@ -116,6 +118,7 @@ data AppState = AppState
   , stateObserver          :: ObservationHandler
   , stateLogger            :: Logger.LoggerState
   , stateMetrics           :: Metrics.MetricsState
+  , stateSentryLogger      :: SentryService
   }
 
 -- | Schema cache status
@@ -127,20 +130,21 @@ data SchemaCacheStatus
 type AppSockets = (NS.Socket, Maybe NS.Socket)
 
 init :: AppConfig -> IO AppState
-init conf@AppConfig{configLogLevel, configDbPoolSize} = do
+init conf@AppConfig{configLogLevel, configDbPoolSize, configSentryDSN} = do
   loggerState  <- Logger.init
   metricsState <- Metrics.init configDbPoolSize
-  let observer = liftA2 (>>) (Logger.observationLogger loggerState configLogLevel) (Metrics.observationMetrics metricsState)
+  sentryLogger <- Sentry.init configSentryDSN
+  let observer = liftA2 (>>) (Logger.observationLogger loggerState configLogLevel sentryLogger) (Metrics.observationMetrics metricsState)
 
   observer $ AppStartObs prettyVersion
 
   pool <- initPool conf observer
   (sock, adminSock) <- initSockets conf
-  state' <- initWithPool (sock, adminSock) pool conf loggerState metricsState observer
+  state' <- initWithPool (sock, adminSock) pool conf loggerState metricsState sentryLogger observer
   pure state' { stateSocketREST = sock, stateSocketAdmin = adminSock}
 
-initWithPool :: AppSockets -> SQL.Pool -> AppConfig -> Logger.LoggerState -> Metrics.MetricsState -> ObservationHandler -> IO AppState
-initWithPool (sock, adminSock) pool conf loggerState metricsState observer = do
+initWithPool :: AppSockets -> SQL.Pool -> AppConfig -> Logger.LoggerState -> Metrics.MetricsState -> SentryService -> ObservationHandler -> IO AppState
+initWithPool (sock, adminSock) pool conf loggerState metricsState sentryLogger observer = do
 
   appState <- AppState pool
     <$> newIORef minimumPgVersion -- assume we're in a supported version when starting, this will be corrected on a later step
@@ -159,6 +163,7 @@ initWithPool (sock, adminSock) pool conf loggerState metricsState observer = do
     <*> pure observer
     <*> pure loggerState
     <*> pure metricsState
+    <*> pure sentryLogger
 
   deb <-
     let decisecond = 100000 in

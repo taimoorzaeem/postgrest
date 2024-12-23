@@ -156,6 +156,7 @@ baseCfg = let secret = encodeUtf8 "reallyreallyreallyreallyverysafe" in
   , configRoleIsoLvl                = mempty
   , configInternalSCSleep           = Nothing
   , configServerTimingEnabled       = True
+  , configSentryDSN                 = mempty
   }
 
 testCfg :: AppConfig
