@@ -13,7 +13,8 @@ module PostgREST.Auth.JwtCache
 
 import qualified Data.Aeson        as JSON
 import qualified Data.Aeson.KeyMap as KM
-import qualified Data.Cache        as C
+import qualified Data.Cache.LRU    as C
+import qualified Data.IORef        as I
 import qualified Data.Scientific   as Sci
 
 import Data.Time.Clock       (UTCTime, nominalDiffTimeToSeconds)
@@ -26,45 +27,46 @@ import PostgREST.Error      (Error (..))
 import Protolude
 
 newtype JwtCacheState = JwtCacheState
-  { jwtCache :: C.Cache ByteString AuthResult
+  { jwtCacheIORef :: I.IORef (C.LRU ByteString AuthResult)
   }
 
 -- | Initialize JwtCacheState
-init :: IO JwtCacheState
-init = do
-  cache <- C.newCache Nothing -- no default expiration
-  return $ JwtCacheState cache
+init :: Int -> IO JwtCacheState
+init configJwtCacheMaxEntries = do
+  cache <- C.newLRU (Just configJwtCacheMaxEntries)
+  return $ JwtCacheState <$> (I.newIORef cache)
 
 -- | Used to retrieve and insert JWT to JWT Cache
 lookupJwtCache :: JwtCacheState -> ByteString -> Int -> IO (Either Error AuthResult) -> UTCTime -> IO (Either Error AuthResult)
-lookupJwtCache JwtCacheState{jwtCache} token maxLifetime parseJwt utc = do
-  checkCache <- C.lookup jwtCache token
-  authResult <- maybe parseJwt (pure . Right) checkCache
+lookupJwtCache jwtCacheState token maxLifetime parseJwt utc = do
+  -- get cache from IORef
+  jwtCache <- I.readIORef (jwtCacheIORef jwtCacheState)
 
-  case (authResult,checkCache) of
-    -- From comment:
-    -- https://github.com/PostgREST/postgrest/pull/3801#discussion_r1857987914
-    --
-    -- We purge expired cache entries on a cache miss
-    -- The reasoning is that:
-    --
-    -- 1. We expect it to be rare (otherwise there is no point of the cache)
-    -- 2. It makes sure the cache is not growing (as inserting new entries
-    --    does garbage collection)
-    -- 3. Since this is time expiration based cache there is no real risk of
-    --    starvation - sooner or later we are going to have a cache miss.
+  -- lookup key = token
+  (jwtCache', maybeVal) <- C.lookup token jwtCache
+
+  -- check cache value otherwise parse jwt
+  authResult <- maybe parseJwt (pure . Right) maybeVal
+
+  -- get updated authResult
+  authResult' <- case (authResult, maybeVal) of
 
     (Right res, Nothing) -> do -- cache miss
 
-      let timeSpec = getTimeSpec res maxLifetime utc
-
-      -- purge expired cache entries
-      C.purgeExpired jwtCache
-
+      -- add expiry from max lifetime config to jwt claims
+      res' <- addExpiryToResultClaims res maxLifetime
+      
       -- insert new cache entry
-      C.insert' jwtCache (Just timeSpec) token res
+      jwtCache'' <- C.insert token res jwtCache'
 
-    _                    -> pure ()
+      -- update IORef
+      I.writeIORef jwtCacheIORef jwtCache''
+
+      return (Right res')
+
+    (_, Just res)        -> do -- cache hit
+      
+      -- check exp claim, if expired then we can't use it, so remove it from cache
 
   return authResult
 

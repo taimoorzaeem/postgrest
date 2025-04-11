@@ -120,14 +120,14 @@ data SchemaCacheStatus
 type AppSockets = (NS.Socket, Maybe NS.Socket)
 
 init :: AppConfig -> IO AppState
-init conf@AppConfig{configLogLevel, configDbPoolSize} = do
+init conf = do
   loggerState  <- Logger.init
-  metricsState <- Metrics.init configDbPoolSize
-  let observer = liftA2 (>>) (Logger.observationLogger loggerState configLogLevel) (Metrics.observationMetrics metricsState)
+  metricsState <- Metrics.init (configDbPoolSize conf)
+  let observer = liftA2 (>>) (Logger.observationLogger loggerState (configLogLevel conf)) (Metrics.observationMetrics metricsState)
 
   observer $ AppStartObs prettyVersion
 
-  jwtCacheState <- JwtCache.init
+  jwtCacheState <- JwtCache.init (configJwtCacheMaxEntries conf)
   pool <- initPool conf observer
   (sock, adminSock) <- initSockets conf
   state' <- initWithPool (sock, adminSock) pool conf jwtCacheState loggerState metricsState observer
