@@ -17,9 +17,10 @@ import qualified Data.Cache.LRU    as C
 import qualified Data.IORef        as I
 import qualified Data.Scientific   as Sci
 
+import Data.Maybe            (fromJust)
 import Data.Time.Clock       (UTCTime, nominalDiffTimeToSeconds)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
-import System.Clock          (TimeSpec (..))
+import GHC.Num               (integerFromInt)
 
 import PostgREST.Auth.Types (AuthResult (..))
 import PostgREST.Error      (Error (..))
@@ -33,17 +34,17 @@ newtype JwtCacheState = JwtCacheState
 -- | Initialize JwtCacheState
 init :: Int -> IO JwtCacheState
 init configJwtCacheMaxEntries = do
-  cache <- C.newLRU (Just configJwtCacheMaxEntries)
-  return $ JwtCacheState <$> (I.newIORef cache)
+  cache <-I.newIORef $  C.newLRU (Just $ integerFromInt configJwtCacheMaxEntries)
+  return $ JwtCacheState cache
 
 -- | Used to retrieve and insert JWT to JWT Cache
 lookupJwtCache :: JwtCacheState -> ByteString -> Int -> IO (Either Error AuthResult) -> UTCTime -> IO (Either Error AuthResult)
-lookupJwtCache jwtCacheState token maxLifetime parseJwt utc = do
+lookupJwtCache JwtCacheState{jwtCacheIORef} token maxLifetime parseJwt utc = do
   -- get cache from IORef
-  jwtCache <- I.readIORef (jwtCacheIORef jwtCacheState)
+  jwtCache <- I.readIORef jwtCacheIORef
 
   -- lookup key = token
-  (jwtCache', maybeVal) <- C.lookup token jwtCache
+  let (jwtCache', maybeVal) = C.lookup token jwtCache
 
   -- check cache value otherwise parse jwt
   authResult <- maybe parseJwt (pure . Right) maybeVal
@@ -53,29 +54,50 @@ lookupJwtCache jwtCacheState token maxLifetime parseJwt utc = do
 
     (Right res, Nothing) -> do -- cache miss
 
-      -- add expiry from max lifetime config to jwt claims
-      res' <- addExpiryToResultClaims res maxLifetime
-      
-      -- insert new cache entry
-      jwtCache'' <- C.insert token res jwtCache'
+        -- add expiry from max lifetime config to jwt claims
+        let res' = addExpToClaims res maxLifetime utc
+        -- insert new cache entry
+            jwtCache'' = C.insert token res' jwtCache'
+        -- update IORef
+        I.writeIORef jwtCacheIORef jwtCache''
 
-      -- update IORef
-      I.writeIORef jwtCacheIORef jwtCache''
+        return $ Right res'
 
-      return (Right res')
+    (parseJwt', Just res)        -> -- cache hit
+        -- check exp claim of lookedup result
+        if isExpClaimExpired res utc == True then do
+            -- if expired, remove from cache
+            let (jwtCache'',_) = C.delete token jwtCache'
+            -- update IORef
+            I.writeIORef jwtCacheIORef jwtCache''
+            return parseJwt'
+        else
+            return $ Right res -- use the result
 
-    (_, Just res)        -> do -- cache hit
-      
-      -- check exp claim, if expired then we can't use it, so remove it from cache
+    _                            -> return authResult -- parsing failed, we fail later
 
-  return authResult
+  return authResult'
 
--- Used to extract JWT exp claim and add to JWT Cache
-getTimeSpec :: AuthResult -> Int -> UTCTime -> TimeSpec
-getTimeSpec res maxLifetime utc = do
-  let expireJSON = KM.lookup "exp" (authClaims res)
-      utcToSecs = floor . nominalDiffTimeToSeconds . utcTimeToPOSIXSeconds
-      sciToInt = fromMaybe 0 . Sci.toBoundedInteger
-  case expireJSON of
-    Just (JSON.Number seconds) -> TimeSpec (sciToInt seconds - utcToSecs utc) 0
-    _                          -> TimeSpec (fromIntegral maxLifetime :: Int64) 0
+-- Add the exp claim to result by using maxLifetime
+addExpToClaims :: AuthResult -> Int -> UTCTime -> AuthResult
+addExpToClaims res maxLifetime utc =
+  let 
+    now = (floor . nominalDiffTimeToSeconds . utcTimeToPOSIXSeconds) utc :: Int
+    newExp = now + maxLifetime
+    authClaims' = KM.insert "exp" (JSON.Number $ Sci.scientific (integerFromInt newExp) 0) (authClaims res)
+  in
+    res{authClaims=authClaims'}
+
+-- check if exp claim is expired when looked up from cache
+isExpClaimExpired :: AuthResult -> UTCTime -> Bool
+isExpClaimExpired res utc =
+  let
+    now = (floor . nominalDiffTimeToSeconds . utcTimeToPOSIXSeconds) utc :: Int
+    -- we can use fromJust, because "exp" claim is inserted in all entries
+    expireJSON = fromJust $ KM.lookup "exp" (authClaims res)
+    sciToInt = fromMaybe 0 . Sci.toBoundedInteger
+  in
+    case expireJSON of
+      JSON.Number expiredAt -> if (sciToInt expiredAt - now) > 0 then False else True
+      _ -> True -- impossible case; we will always have "exp" as JSON.Number
+

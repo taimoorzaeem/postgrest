@@ -138,6 +138,7 @@ baseCfg = let secret = encodeUtf8 "reallyreallyreallyreallyverysafe" in
   , configJwtSecret                 = Just secret
   , configJwtSecretIsBase64         = False
   , configJwtCacheMaxLifetime       = 0
+  , configJwtCacheMaxEntries        = 100 -- default
   , configLogLevel                  = LogCrit
   , configLogQuery                  = LogQueryDisabled
   , configOpenApiMode               = OAFollowPriv
