@@ -18,11 +18,15 @@ import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.Csv              as CSV
 import qualified Data.HashMap.Strict   as HM
 import qualified Data.Map.Strict       as M
+import qualified Data.Scientific       as Sci
 import qualified Data.Set              as S
+import qualified Data.Text             as T
 import qualified Data.Text.Encoding    as T
 import qualified Data.Vector           as V
 
 import Control.Arrow           ((***))
+import Control.Monad           (fail)
+import Data.Aeson              ((.:))
 import Data.Aeson.Types        (emptyArray, emptyObject)
 import Data.Either.Combinators (mapBoth)
 import Network.HTTP.Types.URI  (parseSimpleQuery)
@@ -44,6 +48,7 @@ getPayload reqBody contentMediaType QueryParams{qsColumns} action = do
         (Just ProcessedJSON{payKeys}, _)       -> payKeys
         (Just ProcessedUrlEncoded{payKeys}, _) -> payKeys
         (Just RawJSON{}, Just cls)             -> cls
+        (Just JSONPatchPay{}, Just cls)        -> cls
         _                                      -> S.empty
   return (checkedPayload, cols)
   where
@@ -69,6 +74,9 @@ getPayload reqBody contentMediaType QueryParams{qsColumns} action = do
       (MTTextPlain, True) -> Right $ RawPay reqBody
       (MTTextXML, True) -> Right $ RawPay reqBody
       (MTOctetStream, True) -> Right $ RawPay reqBody
+      (MTVndJSONPatch, False) -> case parseJSONPatch reqBody of
+        Just jsonPatchBody -> Right $ JSONPatchPay jsonPatchBody
+        Nothing            -> Left $ InvalidBody "Couldn't parse JSON Patch body"
       (ct, _) -> Left $ "Content-Type not acceptable: " <> MediaType.toMime ct
 
     shouldParsePayload = case action of
@@ -87,6 +95,11 @@ getPayload reqBody contentMediaType QueryParams{qsColumns} action = do
       ActDb (ActRoutine _ _) -> True
       _                      -> False
     params = (T.decodeUtf8 *** T.decodeUtf8) <$> parseSimpleQuery (LBS.toStrict reqBody)
+
+    -- need type signature to parse [JSONPatchOp] from JSONPatchOp instance
+    parseJSONPatch :: LBS.ByteString -> Maybe [JSONPatchOp]
+    parseJSONPatch = JSON.decode
+
 
 type CsvData = V.Vector (M.Map Text LBS.ByteString)
 
@@ -136,3 +149,28 @@ payloadAttributes raw json =
     _ -> Just emptyPJArray
   where
     emptyPJArray = ProcessedJSON (JSON.encode emptyArray) S.empty
+
+
+-- TODO: Replace the parsing errors with PGRST errors
+instance JSON.FromJSON JSONPatchOp where
+  parseJSON (JSON.Object o) = do
+    op    <- parseString o "op"
+    path  <- parseString o "path"
+    case op of
+      "incr" -> Incr path <$> parseNumber o "value"
+      _      -> fail $ "Unknown JSON Patch operation" ++ T.unpack op
+    where
+      -- op must be a string
+      parseString obj key = do
+        val <- obj .: key
+        case val of
+          JSON.String txt -> pure txt
+          _               -> fail $ "Expected string for " ++ key
+     
+      parseNumber obj key = do
+        val <- obj .: key
+        case val of
+          JSON.Number num -> pure $ fromMaybe 0 (Sci.toBoundedInteger num)
+          _               -> fail $ "Expected number for " ++ key
+  
+  parseJSON _ = fail $ "Expected JSON Object for JSONPatch"

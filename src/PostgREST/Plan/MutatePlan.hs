@@ -6,6 +6,7 @@ where
 import qualified Data.ByteString.Lazy as LBS
 
 import PostgREST.ApiRequest.Preferences  (PreferResolution)
+import PostgREST.ApiRequest.Types        (JSONPatchOp (..))
 import PostgREST.Plan.Types              (CoercibleField,
                                           CoercibleLogicTree)
 import PostgREST.SchemaCache.Identifiers (FieldName,
@@ -35,6 +36,12 @@ data MutatePlan
       }
   | Delete
       { in_       :: QualifiedIdentifier
+      , where_    :: [CoercibleLogicTree]
+      , returning :: [FieldName]
+      }
+  | JSONPatch -- JSON Patch for partial document update (not fully RFC compliant for now)
+      { in_       :: QualifiedIdentifier
+      , patchBody :: Maybe [JSONPatchOp]
       , where_    :: [CoercibleLogicTree]
       , returning :: [FieldName]
       }
