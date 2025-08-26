@@ -289,3 +289,78 @@ def test_jwt_aud_config_set_to_invalid_uri(defaultenv):
     with pytest.raises(PostgrestError):
         dump = cli(["--dump-config"], env=env).split("\n")
         assert "jwt-aud should be a string or a valid URI" in dump
+
+
+def test_cli_ready_flag_success(defaultenv):
+    "PostgREST ready flag succeeds when ready"
+
+    env = {
+        **defaultenv,
+        "PGRST_ADMIN_SERVER_PORT": "3001",
+    }
+
+    # Run postgrest process
+    command = [POSTGREST_BIN]
+    env["HPCTIXFILE"] = hpctixfile()
+    pgrst_process = subprocess.Popen(command, env=env)
+
+    time.sleep(5)  # Wait some seconds for the first process to start
+    try:
+        # Run healthcheck process
+        command = [POSTGREST_BIN] + ["--ready"]
+        healthcheck_process = subprocess.run(command, env=env, capture_output=True)
+        assert healthcheck_process.returncode == 0
+    finally:
+        pgrst_process.kill()
+        pgrst_process.wait()
+
+
+def test_cli_ready_flag_fail(defaultenv):
+    "PostgREST ready flag fails when not ready"
+
+    env = {
+        **defaultenv,
+        "PGRST_ADMIN_SERVER_PORT": "3001",
+    }
+
+    # Run postgrest process
+    command = [POSTGREST_BIN]
+    env["HPCTIXFILE"] = hpctixfile()
+    pgrst_process = subprocess.Popen(command, env=env)
+
+    time.sleep(0)  # No waiting and instantly run the healthcheck process
+    try:
+        # Run healthcheck process
+        command = [POSTGREST_BIN] + ["--ready"]
+        healthcheck_process = subprocess.run(command, env=env, capture_output=True)
+        assert healthcheck_process.returncode == 1
+    finally:
+        pgrst_process.kill()
+        pgrst_process.wait()
+
+
+def test_cli_ready_flag_fail_no_admin_server(defaultenv):
+    "PostgREST --ready flag fail without admin server running"
+
+    env = {
+        **defaultenv,
+        "PGRST_ADMIN_SERVER_PORT": "",
+    }
+
+    command = [POSTGREST_BIN]
+    env["HPCTIXFILE"] = hpctixfile()
+    pgrst_process = subprocess.Popen(command, env=env)
+
+    time.sleep(3)  # Wait so postgrest gets ready
+    try:
+        # Run healthcheck process
+        command = [POSTGREST_BIN] + ["--ready"]
+        healthcheck_process = subprocess.run(command, env=env, capture_output=True)
+        assert healthcheck_process.returncode == 1
+        assert (
+            "Admin Server is not running. Please check your configuration."
+            in healthcheck_process.stderr.decode()
+        )
+    finally:
+        pgrst_process.kill()
+        pgrst_process.wait()

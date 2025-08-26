@@ -49,3 +49,12 @@ Dump Schema
   $ postgrest [--dump-schema]
 
 Dumps the schema cache in JSON format.
+
+Ready Flag
+----------
+
+.. code:: bash
+
+  $ postgrest [--ready]
+
+This is analogous to the ``/ready`` endpoint in :ref:`admin_server`. However, instead of an HTTP response, this exits with return code of ``0`` on success and ``1`` on failure.
