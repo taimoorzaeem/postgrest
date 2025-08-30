@@ -1,21 +1,23 @@
 module PostgREST.Network
-  ( resolveHost
+  ( resolveAddress
   ) where
 
-import           Data.IP        (fromHostAddress, fromHostAddress6)
 import           Data.String    (IsString (..))
 import qualified Network.Socket as NS
 
 import Protolude
 
-resolveHost :: NS.Socket -> IO (Maybe Text)
-resolveHost sock = do
+-- | Resolves the socket to an address depending on the socket type. The Show
+--   instance of the socket types automatically resolves it to the correct
+--   address. Example resolution:
+-- -----------------------------------------------------
+-- | IPv4         | IPv6             | Unix            |
+-- -----------------------------------------------------
+-- | 127.0.0.1:80 | [2001:db8::1]:80 | /tmp/pgrst.sock |
+-- -----------------------------------------------------
+--
+-- TODO: Add Doctests.
+resolveAddress :: NS.Socket -> IO Text
+resolveAddress sock = do
   sn <- NS.getSocketName sock
-  case sn of
-    NS.SockAddrInet _ hostAddr ->  pure $ Just $ fromString $ show $ fromHostAddress hostAddr
-    -- The IPv6 addresses are wrapped in [] brackets. This is done in accordance
-    -- to RFC 3986 (https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.2).
-    -- In short, we did this to have a clear separation between the port and host
-    -- because the components of an IPv6 are separated with the ':' character.
-    NS.SockAddrInet6 _ _ hostAddr6 _ -> pure $ Just $ fromString $ "[" ++ show (fromHostAddress6 hostAddr6) ++ "]"
-    _ -> pure Nothing
+  return $ fromString $ show sn
