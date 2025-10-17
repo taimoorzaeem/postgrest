@@ -1,0 +1,63 @@
+name: Backport
+
+on:
+  pull_request_target:
+    types: [closed]
+  issue_comment:
+    types: [created]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  backport:
+    name: Backport
+    runs-on: ubuntu-24.04
+    if: >
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(
+            fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'),
+            github.event.comment.author_association
+          )
+      )
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Get target branch
+        env:
+          COMMENT: ${{ github.event.comment.body }}
+        id: get_target_branch
+        run: |
+
+          # The comment must start with '/backport to ' followed by branch name
+
+          if [[ "$COMMENT" =~ /backport[[:space:]]+to[[:space:]]+([^[:space:]]+) ]]; then
+            BRANCH="${BASH_REMATCH[1]}"
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            echo "No branch specified in comment"
+            exit 1
+          fi
+
+          # Validate branch exist
+          git fetch --all --quiet
+          if ! git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+            echo "Invalid branch specified, $BRANCH branch does not exist."
+            exit 1
+          fi
+
+      - name: Create Github App Token
+        id: app-token
+        uses: actions/create-github-app-token@d07416681cab29bf2661702f925f020aaa962997 # v2.1.4
+        with:
+          app-id: ${{ secrets.POSTGREST_TEST_BOT_APP_ID }}
+          private-key: ${{ secrets.POSTGREST_TEST_BOT_PRIVATE_KEY }}
+          installation-id: ${{ secrets.POSTGREST_TEST_BOT_INSTALLATION_ID }}
+
+      - name: Create backport PR
+        uses: korthout/backport-action@d07416681cab29bf2661702f925f020aaa962997 # v3.4.1
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          pull_title: '${target_branch}: ${pull_title}'
+          pull_description: 'Backport for #${pull_number}.'
+          target_branches: ${{ steps.get_target_branch.outputs.branch }}
