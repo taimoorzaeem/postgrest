@@ -14,6 +14,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Fix not logging the JSON message to stderr on a `PGRST002` error by @laurenceisla in #4129
 - Fix reloading the Schema Cache unnecessarily on a `PGRST002` error by @laurenceisla in #4367
 - Fix schema cache loading taking a long time for large schemas by @mkleczek in #4360, #3704
+- Fix `db-pre-config` function failing when function name are pg reserved words by @taimoorzaeem #4380
 
 ### Added
 
