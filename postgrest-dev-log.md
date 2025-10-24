@@ -53,3 +53,29 @@ something like:
 data ApiRequest
   = GETReq { ... :: Headers }
   | POSTReq { ... :: _ }
+
+
+## Update PR Template
+
+
+## Docs: catch invalid references
+
+## Refactor: remove qi from plan, and have "Table"
+
+## Remove pytest-xdist from dependencies, it is used for parallel io-tests, which does not work
+
+
+# Postgrest #4131 spec test split
+
+# solve example config file issue
+
+https://github.com/PostgREST/postgrest/issues/1130
+
+this is another issue that needed http-client
+
+
+## Change log enforcer
+
+Use some github action like see the following discussion:
+
+https://github.com/PostgREST/postgrest/discussions/4415#discussioncomment-14742876
