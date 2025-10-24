@@ -53,3 +53,43 @@ something like:
 data ApiRequest
   = GETReq { ... :: Headers }
   | POSTReq { ... :: _ }
+
+
+## Update PR Template
+
+
+## Docs: catch invalid references
+
+## Refactor: remove qi from plan, and have "Table"
+
+## Remove pytest-xdist from dependencies, it is used for parallel io-tests, which does not work
+
+
+# Postgrest #4131 spec test split
+
+# solve example config file issue
+
+https://github.com/PostgREST/postgrest/issues/1130
+
+this is another issue that needed http-client
+
+
+## Change log enforcer
+
+Use some github action like see the following discussion:
+
+https://github.com/PostgREST/postgrest/discussions/4415#discussioncomment-14742876
+
+## Separate User config from AppConfig, would be easier to dump
+
+Work on refactoring content-negotiation stuff, too many TODOs and issues there
+
+
+## Detect commented out code
+
+https://github.com/PostgREST/postgrest/pull/4664#issuecomment-3937809521
+
+
+## Compiling needs our own prelude
+
+Essentially copy Protolude design choices and add hasql helper like encode, decoders, open an issue for tracking purposes.
