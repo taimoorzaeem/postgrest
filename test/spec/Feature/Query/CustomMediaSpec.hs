@@ -116,6 +116,16 @@ spec = describe "custom media types" $ do
         , matchHeaders = ["Content-Type" <:> "text/xml; charset=utf-8"]
         }
 
+    it "should get the return type of function when accept is */*" $ do
+      request methodGet "/rpc/javascript"
+        [("Accept", "*/*")]
+        ""
+        `shouldRespondWith`
+        "This is Javascript."
+        { matchStatus = 200
+        , matchHeaders = ["Content-Type" <:> "text/javascript"]
+        }
+
     it "should fail with function returning text and Accept: text/xml" $ do
       request methodGet "/rpc/welcome" (acceptHdrs "text/xml") ""
         `shouldRespondWith`
