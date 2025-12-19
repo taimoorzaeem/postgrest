@@ -38,8 +38,8 @@ import GHC.Hs.Extension           (GhcPs)
 import GHC.Types.Error            (getMessages)
 import GHC.Types.Name.Occurrence  (occNameString)
 import GHC.Types.Name.Reader      (rdrNameOcc)
-import GHC.Unit.Module.Name       (moduleNameString)
 import GHC.Utils.Error            (pprMsgEnvelopeBagWithLoc)
+import Language.Haskell.Syntax.Module.Name       (moduleNameString)
 import System.Directory.Recursive (getFilesRecursive)
 import System.Exit                (exitFailure)
 
@@ -198,7 +198,7 @@ sourceSymbols source = do
       return $ concatMap (importSymbols source filepath . GHC.unLoc) hsmodImports
 
 -- | Parse a Haskell module
-parseModule :: FilePath -> IO GHC.HsModule
+parseModule :: FilePath -> IO (GHC.HsModule GhcPs)
 parseModule filepath = do
   result <- ExactPrint.parseModule GHC.Paths.libdir filepath
   case result of
