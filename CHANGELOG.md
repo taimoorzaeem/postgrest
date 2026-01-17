@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file. From versio
 ### Added
 
 - Log error when `db-schemas` config contains schema `pg_catalog` or `information_schema` by @taimoorzaeem in #4359
+- Add string slicing operator for `jwt-role-claim-key` by @taimoorzaeem in #4599
 
 ## [14.3] - 2026-01-03
 
