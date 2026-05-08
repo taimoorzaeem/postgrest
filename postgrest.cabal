@@ -229,6 +229,7 @@ library protolude
                       -- it is fine to disable that specific warning
   ghc-options:        -Werror -Wall -fwarn-identities -Wno-x-partial
                       -fno-spec-constr -optP-Wno-nonportable-include-path
+                      -dynamic-too
 
 executable postgrest
   default-language:   Haskell2010
