@@ -7,6 +7,9 @@ let
       {
         name = "postgrest-release";
         docs = "Patch postgrest.cabal, CHANGELOG.md, commit and push all in one go.";
+        args = [
+          "ARG_OPTIONAL_BOOLEAN([skip-confirmation],,[skip confirmation when run in CI])"
+        ];
         workingDir = "/";
       }
       ''
@@ -45,10 +48,7 @@ let
           echo "Updating docs/conf.py ..."
           sed -i -E "s/^(version = ).*$/\1\"$new_docs_version\"/" docs/conf.py > /dev/null
 
-          echo "Updating Haskell source file links ..."
-          sed -i -E "s#(github\.com/PostgREST/postgrest/blob)/main/#\1/$new_version/#g" docs/explanations/architecture.rst
-
-          git add postgrest.cabal docs/conf.py docs/explanations/architecture.rst > /dev/null
+          git add postgrest.cabal docs/conf.py > /dev/null
         }
 
         today_date_for_changelog="$(date '+%Y-%m-%d')"
@@ -79,7 +79,7 @@ let
         fi
 
         trap "echo Remote not found. Please push manually ..." ERR
-        remote="$(git remote -v | grep 'PostgREST/postgrest' | grep push | cut -f1)"
+        remote="$(git remote -v | grep 'taimoorzaeem/postgrest' | grep push | cut -f1)"
         trap "" ERR
 
         if [[ "$current_branch" == "main" ]]; then
@@ -90,22 +90,27 @@ let
           push2=""
         fi
 
-        echo "To push the version bump(s), the following will be run:"
-        echo
-        echo "$push1"
-        echo "$push2"
-        echo
+        if [[ "$_arg_skip_confirmation" == "on" ]]; then
+          $push1
+          $push2
+        else
+          echo "To push the version bump(s), the following will be run:"
+          echo
+          echo "$push1"
+          echo "$push2"
+          echo
 
-        read -r -p 'Proceed? (y/N) ' REPLY
-        case "$REPLY" in
-          y|Y)
-            $push1
-            $push2
-            ;;
-          *)
-            echo "Aborting ..."
-            ;;
-        esac
+          read -r -p 'Proceed? (y/N) ' REPLY
+          case "$REPLY" in
+            y|Y)
+              $push1
+              $push2
+              ;;
+            *)
+              echo "Aborting ..."
+              ;;
+          esac
+        fi
       '';
 
 in
