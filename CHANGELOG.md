@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file. From versio
 
 ## Unreleased
 
+## [16.3] - 2026-09-04
+
 ### Fixed
 
 - Some bug is fixed by @xxxx in #9999
