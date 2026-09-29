@@ -1,0 +1,10 @@
+01/Jan/2000:00:00:00 +0500: Trying to borrow a connection from pool
+01/Jan/2000:00:00:00 +0500: Connection e69aa9d6-a892-47dd-8bd2-49a4dce674cc is being established
+01/Jan/2000:00:00:00 +0500: Connection e69aa9d6-a892-47dd-8bd2-49a4dce674cc is available due to connection establishment
+01/Jan/2000:00:00:00 +0500: Connection e69aa9d6-a892-47dd-8bd2-49a4dce674cc is used
+01/Jan/2000:00:00:00 +0500: Connection e69aa9d6-a892-47dd-8bd2-49a4dce674cc is available due to session success
+01/Jan/2000:00:00:00 +0500: Borrowed a connection from the pool
+01/Jan/2000:00:00:00 +0500: select set_config('search_path', $1, true), set_config($2, $3, true), set_config('role', $4, true), set_config('request.jwt.claims', $5, true), set_config('request.method', $6, true), set_config('request.path', $7, true), set_config('request.headers', $8, true), set_config('request.cookies', $9, true)
+01/Jan/2000:00:00:00 +0500: select "do_nothing"()
+01/Jan/2000:00:00:00 +0500: WITH pgrst_source AS ( SELECT "public"."projects".* FROM "public"."projects"    )  SELECT null::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), '[]') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM ( SELECT * FROM pgrst_source ) _postgrest_t
+- - postgrest_test_anonymous [01/Jan/2000:00:00:00 +0500] "GET /projects HTTP/1.1" 200 28 "" "python-requests/2.34.2"

@@ -80,6 +80,10 @@ class PostgrestProcess:
             time.sleep(0.1)
         return output
 
+    def read_stdout_raw(self):
+        self.process.stdout.flush()
+        return self.process.stdout.read()
+
     def wait_until_scache_starts_loading(self, max_seconds=1):
         "Wait for the admin /ready return a status of 503"
 
@@ -101,6 +105,7 @@ def run(
     wait_max_seconds=1,
     no_pool_connection_available=False,
     no_startup_stdout=True,
+    use_libfaketime=False,
 ):
     "Run PostgREST and yield an endpoint that is ready for connections."
 
@@ -135,6 +140,12 @@ def run(
 
         command = [POSTGREST_BIN]
         env["HPCTIXFILE"] = hpctixfile()
+
+        if use_libfaketime:
+            faketime = os.environ.get("POSTGREST_FAKETIME")
+            if faketime:
+                env["LD_PRELOAD"] = os.environ["POSTGREST_FAKETIME_LIB"]
+                env["FAKETIME"] = faketime
 
         if args:
             command.extend(args)

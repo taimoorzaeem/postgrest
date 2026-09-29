@@ -1,0 +1,8 @@
+01/Jan/2000:00:00:00 +0500: Trying to borrow a connection from pool
+01/Jan/2000:00:00:00 +0500: Connection c349f30c-e9a5-4a1c-82da-5299c1d7351a is being established
+01/Jan/2000:00:00:00 +0500: Connection c349f30c-e9a5-4a1c-82da-5299c1d7351a is available due to connection establishment
+01/Jan/2000:00:00:00 +0500: Connection c349f30c-e9a5-4a1c-82da-5299c1d7351a is used
+01/Jan/2000:00:00:00 +0500: Connection c349f30c-e9a5-4a1c-82da-5299c1d7351a is available due to session failure
+01/Jan/2000:00:00:00 +0500: Borrowed a connection from the pool
+01/Jan/2000:00:00:00 +0500: {"code":"57014","details":null,"hint":null,"message":"canceling statement due to statement timeout"}
+- - timeout_authenticator [01/Jan/2000:00:00:00 +0500] "GET /rpc/sleep?seconds=1 HTTP/1.1" 500 100 "" "python-requests/2.34.2"

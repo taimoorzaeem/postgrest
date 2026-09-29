@@ -35,6 +35,7 @@ let
         docs = "Run the given command in a temporary database with ${name}. If you wish to mutate the database, login with the postgres role.";
         args = [
           "ARG_OPTIONAL_SINGLE([fixtures], [f], [SQL file to load fixtures from])"
+          "ARG_OPTIONAL_SINGLE([faketime], [], [Fake the system time when starting PostgREST. This is useful to test expiry of JWT, for example in loadtests])"
           "ARG_POSITIONAL_SINGLE([command], [Command to run])"
           "ARG_LEFTOVERS([command arguments])"
           "ARG_USE_ENV([PGUSER], [Postgrest_Test_Authenticator], [Authenticator PG role])" # user is written in mixed case to implicitly test that it is being properly quoted in schema cache queries
@@ -42,6 +43,7 @@ let
           "ARG_USE_ENV([PGRST_DB_SCHEMAS], [test], [Schema to expose])"
           "ARG_USE_ENV([PGTZ], [utc], [Timezone to use])"
           "ARG_USE_ENV([PGOPTIONS], [-c search_path=public,test], [PG options to use])"
+          "ARG_USE_ENV([FAKETIME_LIB], [${libfaketime}/lib/libfaketime.so.1], [Faketime Library to preload])"
           "ARG_OPTIONAL_BOOLEAN([replica],, [Enable a replica for the database])"
         ];
         positionalCompletion = "_command";
@@ -157,7 +159,11 @@ let
           >&2 printf " done in %ss. Running command...\n" "$load_end"
         fi
 
-        ("$_arg_command" "''${_arg_leftovers[@]}")
+        if [[ -n "$_arg_faketime" ]]; then
+          (env POSTGREST_FAKETIME_LIB="$FAKETIME_LIB" POSTGREST_FAKETIME="$_arg_faketime" "$_arg_command" "''${_arg_leftovers[@]}")
+        else
+          ("$_arg_command" "''${_arg_leftovers[@]}")
+        fi
       '';
 
   # Helper script for running a command against all PostgreSQL versions.

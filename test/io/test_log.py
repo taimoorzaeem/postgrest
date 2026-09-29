@@ -10,13 +10,10 @@ from config import SECRET
 from util import (
     jwtauthheader,
     relativeSeconds,
-    drain_stdout,
-    match_log,
 )
 from postgrest import (
     Admin,
     freeport,
-    is_ipv6,
     reset_statement_timeout,
     run,
     set_statement_timeout,
@@ -25,7 +22,7 @@ from postgrest import (
 
 
 @pytest.mark.parametrize("level", ["crit", "error", "warn", "info", "debug"])
-def test_log_level(level, defaultenv):
+def test_log_level(level, defaultenv, snapshot_log):
     "log_level should filter request logging"
 
     env = {**defaultenv, "PGRST_LOG_LEVEL": level}
@@ -34,7 +31,7 @@ def test_log_level(level, defaultenv):
     claim = {"role": "postgrest_test_author"}
     headers = jwtauthheader(claim, SECRET)
 
-    with run(env=env) as postgrest:
+    with run(env=env, no_startup_stdout=False, use_libfaketime=True) as postgrest:
         response = postgrest.session.get("/", headers=headers)
         assert response.status_code == 500
 
@@ -44,51 +41,12 @@ def test_log_level(level, defaultenv):
         response = postgrest.session.get("/")
         assert response.status_code == 200
 
-        output = postgrest.read_stdout(nlines=9)
-
-        if level == "crit":
-            assert len(output) == 0
-        elif level == "error":
-            match_log(
-                output,
-                [r'- - - \[.+\] "GET / HTTP/1.1" 500 \d+ "" "python-requests/.+"'],
-            )
-            assert len(output) == 1
-        elif level == "warn":
-            match_log(
-                output,
-                [
-                    r'- - - \[.+\] "GET / HTTP/1.1" 500 \d+ "" "python-requests/.+"',
-                    r'- - postgrest_test_anonymous \[.+\] "GET /unknown HTTP/1.1" 404 \d+ "" "python-requests/.+"',
-                ],
-            )
-            assert len(output) == 2
-        elif level == "info":
-            match_log(
-                output,
-                [
-                    r'- - - \[.+\] "GET / HTTP/1.1" 500 \d+ "" "python-requests/.+"',
-                    r'- - postgrest_test_anonymous \[.+\] "GET /unknown HTTP/1.1" 404 \d+ "" "python-requests/.+"',
-                    r'- - postgrest_test_anonymous \[.+\] "GET / HTTP/1.1" 200 \d+ "" "python-requests/.+"',
-                ],
-            )
-            assert len(output) == 3
-        elif level == "debug":
-            match_log(
-                output,
-                [
-                    r'- - - \[.+\] "GET / HTTP/1.1" 500 \d+ "" "python-requests/.+"',
-                    r'- - postgrest_test_anonymous \[.+\] "GET /unknown HTTP/1.1" 404 \d+ "" "python-requests/.+"',
-                    r'- - postgrest_test_anonymous \[.+\] "GET / HTTP/1.1" 200 \d+ "" "python-requests/.+"',
-                ],
-            )
-            assert len(output) == 9
-            assert any("Connection" and "is available" in line for line in output)
-            assert any("Connection" and "is used" in line for line in output)
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
 @pytest.mark.parametrize("level", ["crit", "error", "warn", "info", "debug"])
-def test_log_query(level, defaultenv):
+def test_log_query(level, defaultenv, snapshot_log):
     "log_query=true should log the SQL query according to the log_level"
 
     env = {
@@ -97,7 +55,7 @@ def test_log_query(level, defaultenv):
         "PGRST_LOG_QUERY": "true",
     }
 
-    with run(env=env) as postgrest:
+    with run(env=env, no_startup_stdout=False, use_libfaketime=True) as postgrest:
         response = postgrest.session.get("/")
         assert response.status_code == 200
 
@@ -117,90 +75,31 @@ def test_log_query(level, defaultenv):
         response = postgrest.session.get("/infinite_recursion")
         assert response.status_code == 500
 
-        get_2xx_regx = r'.+: WITH pgrst_source AS.+SELECT "public"\."projects"\.\* FROM "public"\."projects".+_postgrest_t'
-        get_2xx_count_regx = (
-            r'.+: EXPLAIN \(FORMAT JSON\) SELECT 1  FROM "public"."projects"'
-        )
-        infinite_recursion_5xx_regx = r'.+: WITH pgrst_source AS.+SELECT "public"\."infinite_recursion"\.\* FROM "public"\."infinite_recursion".+_postgrest_t'
-        root_tables_regx = r".+: SELECT   n.nspname AS table_schema, .+ FROM pg_class c .+ ORDER BY table_schema, table_name"
-        root_procs_regx = r".+: WITH.+base_types AS.+pn\.nspname AS proc_schema.+FROM pg_proc p.+p\.pronamespace = quote_ident\(\$1\)::regnamespace"
-        root_descr_regx = r".+: SELECT pg_catalog\.obj_description\(quote_ident\(\$1\)::regnamespace, 'pg_namespace'\)"
-        set_config_regx = (
-            r".+: select set_config\('search_path', \$1, true\), set_config\("
-        )
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
-        output = drain_stdout(postgrest)
 
-        project_queries = [line for line in output if re.match(get_2xx_regx, line)]
-        project_counts = [line for line in output if re.match(get_2xx_count_regx, line)]
-        infinite_queries = [
-            line for line in output if re.match(infinite_recursion_5xx_regx, line)
-        ]
-        root_tables = [line for line in output if re.match(root_tables_regx, line)]
-        root_procs = [line for line in output if re.match(root_procs_regx, line)]
-        root_descr = [line for line in output if re.match(root_descr_regx, line)]
-        set_configs = [line for line in output if re.match(set_config_regx, line)]
-
-        if level == "crit":
-            assert not set_configs
-            assert not project_queries
-            assert not project_counts
-            assert not infinite_queries
-            assert not root_tables
-            assert not root_procs
-            assert not root_descr
-        elif level in {"error", "warn"}:
-            assert len(set_configs) == 1
-            assert len(infinite_queries) == 1
-            assert not project_queries
-            assert not project_counts
-            assert not root_tables
-            assert not root_procs
-            assert not root_descr
-        elif level == "info":
-            assert len(set_configs) == 5
-            assert len(project_queries) == 3
-            assert len(project_counts) == 2
-            assert len(infinite_queries) == 1
-            assert len(root_tables) == 1
-            assert len(root_procs) == 1
-            assert len(root_descr) == 1
-        elif level == "debug":
-            assert len(set_configs) == 5
-            assert len(project_queries) == 3
-            assert len(project_counts) == 2
-            assert len(infinite_queries) == 1
-            assert len(root_tables) == 1
-            assert len(root_procs) == 1
-            assert len(root_descr) == 1
+@pytest.mark.parametrize("level", ["crit", "error", "warn", "info", "debug"])
+def test_log_query_with_db_pre_request(level, defaultenv, snapshot_log):
 
     pre_req_env = {
-        **env,
+        **defaultenv,
+        "PGRST_LOG_LEVEL": level,
+        "PGRST_LOG_QUERY": "true",
         "PGRST_DB_PRE_REQUEST": "do_nothing",
     }
 
-    with run(env=pre_req_env) as postgrest:
+    with run(env=pre_req_env, use_libfaketime=True) as postgrest:
         response = postgrest.session.get("/projects")
         assert response.status_code == 200
 
-        output = drain_stdout(postgrest)
-
-        pre_request_regx = r'.+: select "do_nothing"()'
-        pre_reqs = [line for line in output if re.match(pre_request_regx, line)]
-
-        if level == "crit":
-            assert not pre_reqs
-        elif level in {"error", "warn"}:
-            assert not pre_reqs
-        elif level == "info":
-            assert len(pre_reqs) == 1
-        elif level == "debug":
-            assert len(pre_reqs) == 1
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
 @pytest.mark.parametrize("level", ["crit", "error", "warn", "info", "debug"])
 @pytest.mark.parametrize("log_query", ["false", "true"])
-def test_schema_cache_log_query(level, log_query, defaultenv):
+def test_schema_cache_log_query(level, log_query, defaultenv, snapshot_log):
     "Schema cache SQL queries follow log-query and log-level"
     env = {
         **defaultenv,
@@ -208,28 +107,14 @@ def test_schema_cache_log_query(level, log_query, defaultenv):
         "PGRST_LOG_QUERY": log_query,
     }
 
-    with run(env=env, no_startup_stdout=False, wait_for=None) as postgrest:
-        output = drain_stdout(postgrest)
-
-    # recognizable parts of the schema cache queries
-    markers = [
-        "columns_agg AS",
-        "transform_json as",
-        "pks_uniques_cols AS",
-        "AS proc_schema",
-        "computed_rels as",
-        "c.castsource::regtype::text",
-        "media_types as",
-    ]
-    should_log = log_query == "true" and level in {"info", "debug"}
-    expected_count = 1 if should_log else 0
-    queries = [line for line in output if re.match(r".+: (?:WITH|SELECT) ", line, re.I)]
-    for marker in markers:
-        actual_count = sum(marker in line for line in queries)
-        assert actual_count == expected_count, marker
+    with run(
+        env=env, no_startup_stdout=False, wait_for=None, use_libfaketime=True
+    ) as postgrest:
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_log_lacks_role_with_empty_anon_role(defaultenv):
+def test_log_lacks_role_with_empty_anon_role(defaultenv, snapshot_log):
     "Requests are logged without a role when db-anon-role is empty."
 
     env = {
@@ -238,33 +123,27 @@ def test_log_lacks_role_with_empty_anon_role(defaultenv):
         "PGRST_DB_ANON_ROLE": "",
     }
 
-    with run(env=env) as postgrest:
+    with run(env=env, use_libfaketime=True) as postgrest:
         response = postgrest.session.get("/projects")
         assert response.status_code == 401
 
-        output = postgrest.read_stdout(nlines=1)
-
-    assert len(output) == 1
-    assert re.match(
-        r'- - - \[.+\] "GET /projects HTTP/1.1" 401 \d+ "" "python-requests/.+"',
-        output[0],
-    )
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_log_postgrest_version(defaultenv):
+def test_log_postgrest_version(defaultenv, snapshot_log):
     "Should show the PostgREST version in the logs"
-    with run(env=defaultenv, no_startup_stdout=False) as postgrest:
-        version = postgrest.session.head("/").headers["Server"].split("/")[1]
-
-        output = postgrest.read_stdout(nlines=1)
-
-        assert "Starting PostgREST %s..." % version in output[0]
+    with run(
+        env=defaultenv, no_startup_stdout=False, use_libfaketime=True
+    ) as postgrest:
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
 @pytest.mark.parametrize(
     "host", ["127.0.0.1", "::1", None], ids=["IPv4", "IPv6", "Unix"]
 )
-def test_log_postgrest_host_and_port(host, defaultenv):
+def test_log_postgrest_host_and_port(host, defaultenv, snapshot_log):
     "PostgREST should output the host and port it is bound to."
 
     # We run postgrest on unix socket when host and port are set to None
@@ -272,27 +151,20 @@ def test_log_postgrest_host_and_port(host, defaultenv):
     port = None if is_unix else freeport()
 
     with run(
-        env=defaultenv, host=host, port=port, no_startup_stdout=False
+        env=defaultenv,
+        host=host,
+        port=port,
+        no_startup_stdout=False,
+        use_libfaketime=True,
     ) as postgrest:
-        output = postgrest.read_stdout(nlines=11)
-
-        # Cannot assume a particular log entry order
-        # Listening on a socket happens after schema querying
-        # but is concurrent to the schema loading process
-        # and migh happen before or after writing of the
-        # "Schema cache loaded" log entry
-        if is_unix:
-            match_log(output, [r".*API server listening on .*/tmp/.*\.sock"])
-        elif is_ipv6(host):
-            match_log(output, [r".*API server listening on \[.+]:\d+"])
-        else:  # IPv4
-            match_log(output, [r".*API server listening on .+:\d+"])
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
 @pytest.mark.parametrize(
     "host", ["127.0.0.1", "::1", None], ids=["IPv4", "IPv6", "Unix"]
 )
-def test_log_postgrest_admin_server_host_and_port(host, defaultenv):
+def test_log_postgrest_admin_server_host_and_port(host, defaultenv, snapshot_log):
     "PostgREST should log the admin server host and port"
 
     # We run admin server on unix socket when host and admin_port are set to None
@@ -307,23 +179,15 @@ def test_log_postgrest_admin_server_host_and_port(host, defaultenv):
         admin_port=admin_port,
         no_startup_stdout=False,
         wait_for=Admin.ready,
+        use_libfaketime=True,
     ) as postgrest:
-        output = postgrest.read_stdout(nlines=11)
-
-        # Cannot assume a particular log entry order
-        # Listening on a socket happens after schema querying
-        # but is concurrent to the schema loading process
-        # and migh happen before or after writing of the
-        # "Schema cache loaded" log entry
-        if is_unix:
-            match_log(output, [r".*Admin server listening on .*/tmp/.*\.sock"])
-        elif is_ipv6(host):
-            match_log(output, [r".*Admin server listening on \[.+]:\d+"])
-        else:  # IPv4
-            match_log(output, [r".*Admin server listening on .+:\d+"])
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_log_error_when_schema_cache_load_error_on_startup_to_stderr(defaultenv):
+def test_log_error_when_schema_cache_load_error_on_startup_to_stderr(
+    defaultenv, snapshot_log
+):
     "Should log the 503 error message when there is an error loading schema cache on startup"
 
     env = {
@@ -332,7 +196,7 @@ def test_log_error_when_schema_cache_load_error_on_startup_to_stderr(defaultenv)
         "PGRST_DB_SCHEMAS": "non_existent_schema_aaaa",
     }
 
-    with run(env=env, wait_for=None) as postgrest:
+    with run(env=env, wait_for=None, use_libfaketime=True) as postgrest:
         postgrest.wait_until_scache_starts_loading()
 
         # First call should fail with connection refused
@@ -344,41 +208,26 @@ def test_log_error_when_schema_cache_load_error_on_startup_to_stderr(defaultenv)
         response = postgrest.session.get("/projects")
         assert response.status_code == 503
 
-        output_start = postgrest.read_stdout(nlines=10)
-
-        log_err_message = '{"code":"PGRST002","details":null,"hint":null,"message":"Could not query the database for the schema cache. Retrying."}'
-
-        assert any(log_err_message in line for line in output_start)
+        output_start = postgrest.read_stdout_raw()
+        assert output_start == snapshot_log
 
 
 @pytest.mark.parametrize("level", ["crit", "error", "warn", "info", "debug"])
-def test_log_pool_req_observation(level, defaultenv):
+def test_log_pool_req_observation(level, defaultenv, snapshot_log):
     "PostgREST should log PoolRequest and PoolRequestFullfilled observation when log-level=debug"
 
     env = {**defaultenv, "PGRST_LOG_LEVEL": level, "PGRST_JWT_SECRET": SECRET}
 
     headers = jwtauthheader({"role": "postgrest_test_author"}, SECRET)
 
-    pool_req = r".*Trying to borrow a connection from pool.*"
-    pool_req_fullfill = r".*Borrowed a connection from the pool.*"
-
-    with run(env=env) as postgrest:
+    with run(env=env, use_libfaketime=True) as postgrest:
 
         postgrest.session.get("/authors_only", headers=headers)
-
-        if level == "debug":
-            output = postgrest.read_stdout(nlines=7)
-            assert len(output) == 7
-            match_log(output, [pool_req, pool_req_fullfill])
-        elif level == "info":
-            output = postgrest.read_stdout(nlines=4)
-            assert len(output) == 1
-        else:
-            output = postgrest.read_stdout(nlines=4)
-            assert len(output) == 0
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_log_listener_connection_errors(defaultenv):
+def test_log_listener_connection_errors(defaultenv, snapshot_log):
     "The logs should show the listener connection error message in a single line"
 
     env = {
@@ -387,16 +236,14 @@ def test_log_listener_connection_errors(defaultenv):
         "PGRST_DB_CHANNEL_ENABLED": "true",
     }
 
-    with run(env=env, no_startup_stdout=False, wait_for=None) as postgrest:
-        output = postgrest.read_stdout(nlines=5)
-        assert any(
-            'Failed listening for database notifications on the "pgrst" channel. could not translate host name "no_host" to address:'
-            in line
-            for line in output
-        )
+    with run(
+        env=env, no_startup_stdout=False, wait_for=None, use_libfaketime=True
+    ) as postgrest:
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_log_listener_connection_start(defaultenv):
+def test_log_listener_connection_start(defaultenv, snapshot_log):
     "The logs should show the listener connection start message in a single line"
 
     env = {
@@ -404,19 +251,15 @@ def test_log_listener_connection_start(defaultenv):
         "PGRST_DB_CHANNEL_ENABLED": "true",
     }
 
-    with run(env=env, no_startup_stdout=False, wait_for=Admin.ready) as postgrest:
-        output = postgrest.read_stdout(nlines=10)
-        # Check for the listener start message containing host and port
-        # Do not check if pg version is displayed properly as it is tricky to test it
-        assert any(
-            f'"{defaultenv["PGHOST"]}:5432" and listening for database notifications on the "pgrst" channel'
-            in line
-            for line in output
-        )
+    with run(
+        env=env, no_startup_stdout=False, wait_for=Admin.ready, use_libfaketime=True
+    ) as postgrest:
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
 @pytest.mark.parametrize("level", ["crit", "error", "warn", "info", "debug"])
-def test_db_error_logging_to_stderr(level, defaultenv, metapostgrest):
+def test_db_error_logging_to_stderr(level, defaultenv, metapostgrest, snapshot_log):
     "verify that DB errors are logged to stderr"
 
     role = "timeout_authenticator"
@@ -429,26 +272,13 @@ def test_db_error_logging_to_stderr(level, defaultenv, metapostgrest):
         "PGRST_LOG_LEVEL": level,
     }
 
-    with run(env=env) as postgrest:
+    with run(env=env, use_libfaketime=True) as postgrest:
         response = postgrest.session.get("/rpc/sleep?seconds=1")
         assert response.status_code == 500
 
         # ensure the message appears on the logs
-        output = postgrest.read_stdout(nlines=8)
-
-        if level == "crit":
-            assert len(output) == 0
-        elif level == "debug":
-            match_log(
-                output,
-                [
-                    r".*canceling statement due to statement timeout.*",
-                    r".*500.*",
-                ],
-            )
-        else:
-            assert " 500 " in output[1]
-            assert "canceling statement due to statement timeout" in output[0]
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
     reset_statement_timeout(metapostgrest, role)
 
@@ -479,30 +309,20 @@ def test_schema_cache_query_sleep_logs(defaultenv):
 
 
 @pytest.mark.parametrize("level", ["crit", "error", "warn", "info", "debug"])
-def test_schema_cache_query_timings_log(level, defaultenv):
+def test_schema_cache_query_timings_log(level, defaultenv, snapshot_log):
     "Schema cache query timings should be logged on log-level=debug."
 
     env = {
         **defaultenv,
         "PGRST_LOG_LEVEL": level,
     }
-    log_pattern = re.compile(
-        r".+: tables: [\d.]+ ms, keydeps: [\d.]+ ms, rels: [\d.]+ ms, funcs: [\d.]+ ms, comprels: [\d.]+ ms, dreps: [\d.]+ ms, mhandlers: [\d.]+ ms"
-    )
 
-    with run(env=env, no_startup_stdout=False) as postgrest:
-        output = drain_stdout(postgrest)
-        timing_matches = [
-            match for line in output if (match := log_pattern.match(line))
-        ]
-
-        if level == "debug":
-            assert len(timing_matches) == 1
-        else:
-            assert not timing_matches
+    with run(env=env, no_startup_stdout=False, use_libfaketime=True) as postgrest:
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_empty_schema_cache_log_contains_jwt_role(defaultenv):
+def test_empty_schema_cache_log_contains_jwt_role(defaultenv, snapshot_log):
     "Requests are logged with the role when the schema cache is empty on startup"
 
     env = {
@@ -512,43 +332,31 @@ def test_empty_schema_cache_log_contains_jwt_role(defaultenv):
     }
     headers = jwtauthheader({"role": "postgrest_test_author"}, SECRET)
 
-    with run(env=env, wait_for=None) as postgrest:
+    with run(env=env, wait_for=None, use_libfaketime=True) as postgrest:
         postgrest.wait_until_scache_starts_loading()
 
         response = postgrest.session.get("/authors_only", headers=headers)
         assert response.status_code == 503
 
-        output = drain_stdout(postgrest)
-
-    assert any(
-        re.match(
-            r'- - postgrest_test_author \[.+\] "GET /authors_only HTTP/1.1" 503 \d+ "" "python-requests/.+"',
-            line,
-        )
-        for line in output
-    )
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_expired_jwt_log_lacks_role(defaultenv):
+def test_expired_jwt_log_lacks_role(defaultenv, snapshot_log):
     "Expired JWT requests are logged without a role."
 
     env = {**defaultenv, "PGRST_JWT_SECRET": SECRET}
     headers = jwtauthheader({"exp": relativeSeconds(-35)}, SECRET)
 
-    with run(env=env) as postgrest:
+    with run(env=env, use_libfaketime=True) as postgrest:
         response = postgrest.session.get("/authors_only", headers=headers)
         assert response.status_code == 401
 
-        output = postgrest.read_stdout(nlines=1)
-
-    assert len(output) == 1
-    assert re.match(
-        r'- - - \[.+\] "GET /authors_only HTTP/1.1" 401 \d+ "" "python-requests/.+"',
-        output[0],
-    )
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_schema_cache_error_observation(defaultenv):
+def test_schema_cache_error_observation(defaultenv, snapshot_log):
     "schema cache error observation should be logged with invalid db-schemas or db-extra-search-path"
 
     env = {
@@ -556,35 +364,25 @@ def test_schema_cache_error_observation(defaultenv):
         "PGRST_DB_EXTRA_SEARCH_PATH": "x",
     }
 
-    with run(env=env, no_startup_stdout=False, wait_for=None) as postgrest:
-        # TODO: postgrest should exit here, instead it keeps retrying
-        # exitCode = wait_until_exit(postgrest)
-        # assert exitCode == 1
-
-        output = postgrest.read_stdout(nlines=9)
-        assert (
-            "Failed to load the schema cache using db-schemas=public and db-extra-search-path=x"
-            in output[6]
-        )
+    with run(
+        env=env, no_startup_stdout=False, wait_for=None, use_libfaketime=True
+    ) as postgrest:
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_invalid_rpc_method_log_contains_role(defaultenv):
+def test_invalid_rpc_method_log_contains_role(defaultenv, snapshot_log):
     "Invalid RPC method requests are logged with the anonymous role."
 
-    with run(env=defaultenv) as postgrest:
+    with run(env=defaultenv, use_libfaketime=True) as postgrest:
         response = postgrest.session.put("/rpc/sleep")
         assert response.status_code == 405
 
-        output = postgrest.read_stdout(nlines=1)
-
-    assert len(output) == 1
-    assert re.match(
-        r'- - postgrest_test_anonymous \[.+\] "PUT /rpc/sleep HTTP/1.1" 405 \d+ "" "python-requests/.+"',
-        output[0],
-    )
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log
 
 
-def test_pgrst_log_503_client_error_to_stderr(defaultenv):
+def test_pgrst_log_503_client_error_to_stderr(defaultenv, snapshot_log):
     "PostgREST should log 503 errors to stderr"
 
     env = {
@@ -592,36 +390,29 @@ def test_pgrst_log_503_client_error_to_stderr(defaultenv):
         "PGAPPNAME": "test-io",
     }
 
-    with run(env=env) as postgrest:
+    with run(env=env, no_startup_stdout=False, use_libfaketime=True) as postgrest:
 
         postgrest.session.get("/rpc/terminate_pgrst?appname=test-io")
 
-        output = postgrest.read_stdout(nlines=6)
+        output = postgrest.read_stdout_raw()
 
-        log_message = '{"code":"PGRST001","details":"no connection to the server\\n","hint":null,"message":"Database client error. Retrying the connection."}\n'
-
-        assert any(log_message in line for line in output)
+        assert output == snapshot_log
 
 
-def test_termination_unix_signal_logging(defaultenv):
+def test_termination_unix_signal_logging(defaultenv, snapshot_log):
     "Server logs when handling termination unix signals."
 
-    with run(env=defaultenv) as postgrest:
+    with run(
+        env=defaultenv, no_startup_stdout=False, use_libfaketime=True
+    ) as postgrest:
         postgrest.process.send_signal(signal.SIGTERM)
-        lines = postgrest.read_stdout(nlines=1)
+        lines = postgrest.read_stdout_raw()
         wait_until_exit(postgrest)
 
-    assert any("SIGTERM" in line for line in lines)
-
-    with run(env=defaultenv) as postgrest:
-        postgrest.process.send_signal(signal.SIGINT)
-        lines = postgrest.read_stdout(nlines=1)
-        wait_until_exit(postgrest)
-
-    assert any("SIGINT" in line for line in lines)
+        assert lines == snapshot_log
 
 
-def test_options_request_logs_but_cors_preflight_does_not(defaultenv):
+def test_options_request_logs_but_cors_preflight_does_not(defaultenv, snapshot_log):
     "Plain OPTIONS requests should be logged, but CORS preflight requests should not."
 
     env = {
@@ -635,7 +426,7 @@ def test_options_request_logs_but_cors_preflight_does_not(defaultenv):
         "Access-Control-Request-Headers": "Content-Type",
     }
 
-    with run(env=env) as postgrest:
+    with run(env=env, use_libfaketime=True) as postgrest:
         response = postgrest.session.options("/projects")
         assert response.status_code == 200
 
@@ -643,10 +434,5 @@ def test_options_request_logs_but_cors_preflight_does_not(defaultenv):
         assert response.status_code == 200
         assert response.headers["Access-Control-Allow-Origin"] == "http://example.com"
 
-        output = drain_stdout(postgrest)
-
-    assert len(output) == 1
-    assert re.match(
-        r'- - postgrest_test_anonymous \[.+\] "OPTIONS /projects HTTP/1.1" 200 \d+ "" "python-requests/.+"',
-        output[0],
-    )
+        output = postgrest.read_stdout_raw()
+        assert output == snapshot_log

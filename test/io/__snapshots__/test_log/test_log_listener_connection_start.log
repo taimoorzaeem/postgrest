@@ -1,0 +1,10 @@
+01/Jan/2000:00:00:00 +0500: Starting PostgREST <VERSION>...
+01/Jan/2000:00:00:00 +0500: Admin server listening on <TMP>/admin.sock
+01/Jan/2000:00:00:00 +0500: Successfully connected to PostgreSQL 19beta1 on x86_64-pc-linux-gnu, compiled by clang version 21.1.8, 64-bit
+01/Jan/2000:00:00:00 +0500: Connection Pool initialized with a maximum size of 1 connections
+01/Jan/2000:00:00:00 +0500: Listener connected to PostgreSQL 19beta1 on x86_64-pc-linux-gnu, compiled by clang version 21.1.8, 64-bit on "<TMP>/socket:5432" and listening for database notifications on the "pgrst" channel
+01/Jan/2000:00:00:00 +0500: Config reloaded
+01/Jan/2000:00:00:00 +0500: API server listening on <TMP>/postgrest.sock
+01/Jan/2000:00:00:00 +0500: Schema cache queried in 0.0 milliseconds 
+01/Jan/2000:00:00:00 +0500: Schema cache loaded 9 Relations, 3 Relationships, 34 RPCs, 0 Domain Representations, 4 Media Type Handlers
+01/Jan/2000:00:00:00 +0500: Schema cache loaded in 0.0 milliseconds

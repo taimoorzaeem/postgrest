@@ -1,0 +1,10 @@
+01/Jan/2000:00:00:00 +0500: Starting PostgREST <VERSION>...
+01/Jan/2000:00:00:00 +0500: Admin server listening on <TMP>/admin.sock
+01/Jan/2000:00:00:00 +0500: Successfully connected to PostgreSQL 19beta1 on x86_64-pc-linux-gnu, compiled by clang version 21.1.8, 64-bit
+01/Jan/2000:00:00:00 +0500: Connection Pool initialized with a maximum size of 1 connections
+01/Jan/2000:00:00:00 +0500: Listener connected to PostgreSQL 19beta1 on x86_64-pc-linux-gnu, compiled by clang version 21.1.8, 64-bit on "<TMP>/socket:5432" and listening for database notifications on the "pgrst" channel
+01/Jan/2000:00:00:00 +0500: Config reloaded
+01/Jan/2000:00:00:00 +0500: Failed to load the schema cache using db-schemas=non_existent_schema_aaaa and db-extra-search-path=public. {"code":"3F000","details":null,"hint":null,"message":"schema \"non_existent_schema_aaaa\" does not exist"}
+01/Jan/2000:00:00:00 +0500: API server listening on <TMP>/postgrest.sock
+01/Jan/2000:00:00:00 +0500: {"code":"PGRST002","details":null,"hint":null,"message":"Could not query the database for the schema cache. Retrying."}
+- - postgrest_test_author [01/Jan/2000:00:00:00 +0500] "GET /authors_only HTTP/1.1" 503 119 "" "python-requests/2.34.2"

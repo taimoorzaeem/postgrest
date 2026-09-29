@@ -1,0 +1,14 @@
+01/Jan/2000:00:00:00 +0500: Starting PostgREST <VERSION>...
+01/Jan/2000:00:00:00 +0500: Admin server listening on <TMP>/admin.sock
+01/Jan/2000:00:00:00 +0500: Listener connected to PostgreSQL 19beta1 on x86_64-pc-linux-gnu, compiled by clang version 21.1.8, 64-bit on "<TMP>/socket:5432" and listening for database notifications on the "pgrst" channel
+01/Jan/2000:00:00:00 +0500: Successfully connected to PostgreSQL 19beta1 on x86_64-pc-linux-gnu, compiled by clang version 21.1.8, 64-bit
+01/Jan/2000:00:00:00 +0500: Connection Pool initialized with a maximum size of 1 connections
+01/Jan/2000:00:00:00 +0500: Config reloaded
+01/Jan/2000:00:00:00 +0500: API server listening on <TMP>/postgrest.sock
+01/Jan/2000:00:00:00 +0500: Schema cache queried in 0.0 milliseconds 
+01/Jan/2000:00:00:00 +0500: Schema cache loaded 9 Relations, 3 Relationships, 34 RPCs, 0 Domain Representations, 4 Media Type Handlers
+01/Jan/2000:00:00:00 +0500: Schema cache loaded in 0.0 milliseconds
+01/Jan/2000:00:00:00 +0500: {"code":"42P17","details":null,"hint":null,"message":"infinite recursion detected in rules for relation \"infinite_recursion\""}
+01/Jan/2000:00:00:00 +0500: select set_config('search_path', $1, true), set_config($2, $3, true), set_config('role', $4, true), set_config('request.jwt.claims', $5, true), set_config('request.method', $6, true), set_config('request.path', $7, true), set_config('request.headers', $8, true), set_config('request.cookies', $9, true)
+01/Jan/2000:00:00:00 +0500: WITH pgrst_source AS ( SELECT "public"."infinite_recursion".* FROM "public"."infinite_recursion"    )  SELECT null::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), '[]') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM ( SELECT * FROM pgrst_source ) _postgrest_t
+- - postgrest_test_anonymous [01/Jan/2000:00:00:00 +0500] "GET /infinite_recursion HTTP/1.1" 500 128 "" "python-requests/2.34.2"

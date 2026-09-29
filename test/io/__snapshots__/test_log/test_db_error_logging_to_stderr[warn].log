@@ -1,0 +1,2 @@
+01/Jan/2000:00:00:00 +0500: {"code":"57014","details":null,"hint":null,"message":"canceling statement due to statement timeout"}
+- - timeout_authenticator [01/Jan/2000:00:00:00 +0500] "GET /rpc/sleep?seconds=1 HTTP/1.1" 500 100 "" "python-requests/2.34.2"

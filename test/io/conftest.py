@@ -1,6 +1,7 @@
 import os
 import pytest
-from syrupy.extensions.json import SingleFileSnapshotExtension
+import re
+from syrupy.extensions.json import SingleFileSnapshotExtension, WriteMode
 from postgrest import run
 
 
@@ -93,3 +94,40 @@ class YamlSnapshotExtension(SingleFileSnapshotExtension):
 @pytest.fixture
 def snapshot_yaml(snapshot):
     return snapshot.use_extension(YamlSnapshotExtension)
+
+
+class LogSnapshotExtension(SingleFileSnapshotExtension):
+    _write_mode = WriteMode.TEXT
+    file_extension = "log"
+
+    REPLACEMENTS = [
+        # /tmp/nix-shell-123/tmpabc/admin.sock -> <TMP>/admin.sock
+        (re.compile(r'/tmp/(?:[^/\s"]+/)*([^/\s"]+)'), r"<TMP>/\1"),
+        # PostgreSQL 17.10 on x86_64-..., compiled by clang ..., 64-bit
+        (re.compile(r"PostgreSQL [\d.]+ on .+?, 64-bit"), "PostgreSQL <PG_VERSION>"),
+        # Starting PostgREST 17 (pre-release)...
+        (
+            re.compile(r"Starting PostgREST .*?\.\.\."),
+            "Starting PostgREST <VERSION>...",
+        ),
+    ]
+
+    def replace(self, text):
+        for pattern, repl in self.REPLACEMENTS:
+            text = pattern.sub(repl, text)
+
+        return text
+
+    def serialize(self, data, **kwargs):
+        if data is None:
+            data = ""
+
+        if isinstance(data, bytes):
+            data = data.decode()
+
+        return self.replace(data)
+
+
+@pytest.fixture
+def snapshot_log(snapshot):
+    return snapshot.use_extension(LogSnapshotExtension)

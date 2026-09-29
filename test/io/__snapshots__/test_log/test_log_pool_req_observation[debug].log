@@ -1,0 +1,8 @@
+01/Jan/2000:00:00:00 +0500: Looked up a JWT in JWT cache
+01/Jan/2000:00:00:00 +0500: Trying to borrow a connection from pool
+01/Jan/2000:00:00:00 +0500: Connection 9671cd9f-6a90-4bc0-a5d2-1565dfc1de8a is being established
+01/Jan/2000:00:00:00 +0500: Connection 9671cd9f-6a90-4bc0-a5d2-1565dfc1de8a is available due to connection establishment
+01/Jan/2000:00:00:00 +0500: Connection 9671cd9f-6a90-4bc0-a5d2-1565dfc1de8a is used
+01/Jan/2000:00:00:00 +0500: Connection 9671cd9f-6a90-4bc0-a5d2-1565dfc1de8a is available due to session success
+01/Jan/2000:00:00:00 +0500: Borrowed a connection from the pool
+- - postgrest_test_author [01/Jan/2000:00:00:00 +0500] "GET /authors_only HTTP/1.1" 200 2 "" "python-requests/2.34.2"
