@@ -3,6 +3,8 @@ name: Run anywhere
 description: Runs the same code either in a VM or on the bare machine
 
 inputs:
+  release:
+    description: Which release to build
   vm:
     description: Which VM to run on.
   envs:

@@ -107,8 +107,11 @@ jobs:
           - name: FreeBSD x86-64
             runs-on: ubuntu-24.04
             vm: freebsd
+            release: "14.5"
             artifact: postgrest-freebsd-x86-64
-            deps: pkg install -y git postgresql16-client hs-stack
+            deps: |
+              pkg update -f
+              pkg install -y git postgresql16-client hs-stack
 
           - name: MacOS aarch64
             runs-on: macos-14
@@ -158,6 +161,7 @@ jobs:
       - name: Build with Stack
         uses: ./.github/actions/run-anywhere
         with:
+          release: ${{ matrix.release }}
           vm: ${{ matrix.vm }}
           envs: STACK_ROOT
           prepare: ${{ matrix.deps }}
