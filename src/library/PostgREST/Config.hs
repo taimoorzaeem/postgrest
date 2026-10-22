@@ -8,11 +8,12 @@
 -- Description : Manages PostgREST configuration type and parser.
 module PostgREST.Config
   ( AppConfig (..)
+  , LogLevel (..)
+  , Verbosity (..)
+  , OpenAPIMode (..)
   , Environment
   , JSPath
   , defaultRoleJSPathKey
-  , LogLevel (..)
-  , OpenAPIMode (..)
   , Proxy (..)
   , toText
   , isMalformedProxyUri
@@ -25,7 +26,6 @@ module PostgREST.Config
   , toConnectionSettings
   , exampleConfigFile
   , audMatchesCfg
-  , Verbosity (..)
   )
 where
 
@@ -71,71 +71,13 @@ import PostgREST.Config.Proxy
   , isMalformedProxyUri
   , toURI
   )
+import PostgREST.Config.Types (AppConfig (..), LogLevel (..), OpenAPIMode (..), Verbosity (..))
 import PostgREST.Version (prettyVersion)
 
 import Hasql.Connection.Setting qualified as SQL
 
 audMatchesCfg :: AppConfig -> Text -> Bool
 audMatchesCfg = maybe (const True) (==) . configJwtAudience
-
-data AppConfig = AppConfig
-  { configAppSettings :: [(Text, Text)],
-    configClientErrorVerbosity :: Verbosity,
-    configDbAggregates :: Bool,
-    configDbAnonRole :: Maybe BS.ByteString,
-    configDbChannel :: Text,
-    configDbChannelEnabled :: Bool,
-    configDbExtraSearchPath :: [Text],
-    configDbHoistedTxSettings :: [Text],
-    configDbMaxRows :: Maybe Integer,
-    configDbPlanEnabled :: Bool,
-    configDbPoolSize :: Int,
-    configDbPoolAcquisitionTimeout :: Int,
-    configDbPoolMaxLifetime :: Int,
-    configDbPoolMaxIdletime :: Int,
-    configDbPoolAutomaticRecovery :: Bool,
-    configDbPreRequest :: Maybe QualifiedIdentifier,
-    configDbPreparedStatements :: Bool,
-    configDbRootSpec :: Maybe QualifiedIdentifier,
-    configDbSchemas :: NonEmpty Text,
-    configDbConfig :: Bool,
-    configDbPreConfig :: Maybe QualifiedIdentifier,
-    configDbTxAllowOverride :: Bool,
-    configDbTxRollbackAll :: Bool,
-    configDbUri :: Text,
-    configFilePath :: Maybe FilePath,
-    configJWKS :: Maybe JwkSet,
-    configJwtAudience :: Maybe Text,
-    configJwtRoleClaimKey :: JSPath,
-    configJwtSecret :: Maybe BS.ByteString,
-    configJwtSecretIsBase64 :: Bool,
-    configJwtCacheMaxEntries :: Int,
-    configLogLevel :: LogLevel,
-    configLogQuery :: Bool,
-    configOpenApiMode :: OpenAPIMode,
-    configOpenApiSecurityActive :: Bool,
-    configOpenApiServerProxyUri :: Maybe Text,
-    configServerCorsAllowedOrigins :: [Text],
-    configServerHost :: Text,
-    configServerPort :: Int,
-    configServerReusePort :: Bool,
-    configServerTraceHeader :: Maybe (CI.CI BS.ByteString),
-    configServerTimingEnabled :: Bool,
-    configServerUnixSocket :: Maybe FilePath,
-    configServerUnixSocketMode :: FileMode,
-    configUrlUseLegacyTargetNames :: Bool,
-    configAdminServerHost :: Text,
-    configAdminServerPort :: Maybe Int,
-    configAdminServerUnixSocket :: Maybe FilePath,
-    configAdminServerUnixSocketMode :: FileMode,
-    configRoleSettings :: RoleSettings,
-    configRoleIsoLvl :: RoleIsolationLvl,
-    configInternalSCQuerySleepFst :: Maybe Int32,
-    configInternalSCQuerySleepSnd :: Maybe Int32
-  }
-
-data LogLevel = LogCrit | LogError | LogWarn | LogInfo | LogDebug
-  deriving (Eq, Ord)
 
 dumpLogLevel :: LogLevel -> Text
 dumpLogLevel = \case
@@ -145,17 +87,10 @@ dumpLogLevel = \case
   LogInfo -> "info"
   LogDebug -> "debug"
 
-data Verbosity
-  = Minimal
-  | Verbose
-
 dumpClientErrorVerbosity :: Verbosity -> Text
 dumpClientErrorVerbosity = \case
   Minimal -> "minimal"
   Verbose -> "verbose"
-
-data OpenAPIMode = OAFollowPriv | OAIgnorePriv | OADisabled
-  deriving (Eq)
 
 dumpOpenApiMode :: OpenAPIMode -> Text
 dumpOpenApiMode = \case

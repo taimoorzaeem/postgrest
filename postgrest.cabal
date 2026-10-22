@@ -173,6 +173,7 @@ library
                       PostgREST.Config.JSPath
                       PostgREST.Config.PgVersion
                       PostgREST.Config.Proxy
+                      PostgREST.Config.Types
                       PostgREST.Cors
                       PostgREST.Debounce
                       PostgREST.Error
