@@ -11,6 +11,7 @@ module PostgREST.Config
   , LogLevel (..)
   , Verbosity (..)
   , OpenAPIMode (..)
+  , TxEnd (..)
   , Environment
   , JSPath
   , defaultRoleJSPathKey
@@ -71,7 +72,7 @@ import PostgREST.Config.Proxy
   , isMalformedProxyUri
   , toURI
   )
-import PostgREST.Config.Types (AppConfig (..), LogLevel (..), OpenAPIMode (..), Verbosity (..))
+import PostgREST.Config.Types (AppConfig (..), LogLevel (..), OpenAPIMode (..), TxEnd (..), Verbosity (..))
 import PostgREST.Version (prettyVersion)
 
 import Hasql.Connection.Setting qualified as SQL
@@ -163,11 +164,11 @@ toText conf =
     dumpQi (QualifiedIdentifier s i) =
       (if T.null s then mempty else s <> ".") <> i
 
-    showTxEnd c = case (configDbTxRollbackAll c, configDbTxAllowOverride c) of
-      (False, False) -> "commit"
-      (False, True) -> "commit-allow-override"
-      (True, False) -> "rollback"
-      (True, True) -> "rollback-allow-override"
+    showTxEnd c = case configDbTxEnd c of
+      TxCommit -> "commit"
+      TxCommitAllowOverride -> "commit-allow-override"
+      TxRollback -> "rollback"
+      TxRollbackAllowOverride -> "rollback-allow-override"
     showJwtSecret c
       | configJwtSecretIsBase64 c = B64.encode secret
       | otherwise = secret
@@ -251,8 +252,7 @@ parser optPath env dbSettings roleSettings roleIsolationLvl =
     <*> parseDbSchemas "db-schemas" "db-schema"
     <*> (fromMaybe True <$> optBool "db-config")
     <*> (fmap toQi <$> optString "db-pre-config")
-    <*> parseTxEnd "db-tx-end" snd
-    <*> parseTxEnd "db-tx-end" fst
+    <*> parseTxEnd "db-tx-end"
     <*> (fromMaybe "postgresql://" <$> optString "db-uri")
     <*> pure optPath
     <*> pure Nothing
@@ -373,15 +373,14 @@ parser optPath env dbSettings roleSettings roleIsolationLvl =
         Just "debug" -> pure LogDebug
         Just _ -> fail "Invalid logging level. Check your configuration."
 
-    parseTxEnd :: C.Key -> ((Bool, Bool) -> Bool) -> C.Parser C.Config Bool
-    parseTxEnd k f =
+    parseTxEnd :: C.Key -> C.Parser C.Config TxEnd
+    parseTxEnd k =
       optString k >>= \case
-        -- (RollbackAll, AllowOverride)
-        Nothing -> pure $ f (False, False)
-        Just "commit" -> pure $ f (False, False)
-        Just "commit-allow-override" -> pure $ f (False, True)
-        Just "rollback" -> pure $ f (True, False)
-        Just "rollback-allow-override" -> pure $ f (True, True)
+        Nothing -> pure TxCommit
+        Just "commit" -> pure TxCommit
+        Just "commit-allow-override" -> pure TxCommitAllowOverride
+        Just "rollback" -> pure TxRollback
+        Just "rollback-allow-override" -> pure TxRollbackAllowOverride
         Just _ -> fail "Invalid transaction termination. Check your configuration."
 
     parseRoleClaimKey :: C.Key -> C.Key -> C.Parser C.Config JSPath

@@ -7,7 +7,7 @@ import Test.Hspec
 import Test.Hspec.Wai
 import Test.Hspec.Wai.JSON
 
-import PostgREST.Config (AppConfig (..))
+import PostgREST.Config (AppConfig (..), TxEnd (..))
 import SpecHelper
 
 -- two helpers functions to make sure that each test can setup and cleanup properly
@@ -274,11 +274,7 @@ allowed withConfig = withConfig baseCfg $ describe "tx-allow-override = true" $ 
 
 disallowed :: SpecWithConfig
 disallowed withConfig = withConfig
-  ( baseCfg
-      { configDbTxAllowOverride = False,
-        configDbTxRollbackAll = False
-      }
-  )
+  (baseCfg{configDbTxEnd = TxCommit})
   $ describe "tx-rollback-all = false, tx-allow-override = false"
   $ do
     describe "without Prefer tx" $ do
@@ -298,11 +294,7 @@ disallowed withConfig = withConfig
 
 forced :: SpecWithConfig
 forced withConfig = withConfig
-  ( baseCfg
-      { configDbTxAllowOverride = False,
-        configDbTxRollbackAll = True
-      }
-  )
+  (baseCfg{configDbTxEnd = TxRollback})
   $ describe "tx-rollback-all = true, tx-allow-override = false"
   $ do
     describe "without Prefer tx" $ do

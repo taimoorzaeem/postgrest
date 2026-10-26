@@ -26,6 +26,7 @@ import PostgREST.Config
   ( AppConfig (..)
   , LogLevel (..)
   , OpenAPIMode (..)
+  , TxEnd (..)
   , Verbosity (..)
   , defaultRoleJSPathKey
   , parseSecret
@@ -110,8 +111,7 @@ baseCfg =
           configServerTraceHeader = Nothing,
           configServerUnixSocket = Nothing,
           configServerUnixSocketMode = 432,
-          configDbTxAllowOverride = True,
-          configDbTxRollbackAll = True,
+          configDbTxEnd = TxRollbackAllowOverride,
           configAdminServerHost = "localhost",
           configAdminServerPort = Nothing,
           configAdminServerUnixSocket = Nothing,

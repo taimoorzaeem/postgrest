@@ -6,6 +6,7 @@ module PostgREST.Config.Types
   , LogLevel (..)
   , OpenAPIMode (..)
   , Verbosity (..)
+  , TxEnd (..)
   )
 where
 
@@ -42,8 +43,7 @@ data AppConfig = AppConfig
     configDbSchemas :: NonEmpty Text,
     configDbConfig :: Bool,
     configDbPreConfig :: Maybe QualifiedIdentifier,
-    configDbTxAllowOverride :: Bool,
-    configDbTxRollbackAll :: Bool,
+    configDbTxEnd :: TxEnd,
     configDbUri :: Text,
     configFilePath :: Maybe FilePath,
     configJWKS :: Maybe JwkSet,
@@ -84,4 +84,11 @@ data Verbosity
   | Verbose
 
 data OpenAPIMode = OAFollowPriv | OAIgnorePriv | OADisabled
+  deriving (Eq)
+
+data TxEnd
+  = TxCommit
+  | TxCommitAllowOverride
+  | TxRollback
+  | TxRollbackAllowOverride
   deriving (Eq)

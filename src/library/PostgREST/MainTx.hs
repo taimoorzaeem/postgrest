@@ -37,7 +37,7 @@ import PostgREST.Auth.Types (AuthResult (..))
 import PostgREST.Catalog.Identifiers (QualifiedIdentifier (..))
 import PostgREST.Catalog.Routine (Routine (..), RoutineMap)
 import PostgREST.Catalog.Table (TablesMap)
-import PostgREST.Config (AppConfig (..), OpenAPIMode (..))
+import PostgREST.Config (AppConfig (..), OpenAPIMode (..), TxEnd (..))
 import PostgREST.Error (Error)
 import PostgREST.MediaType (MediaType (..))
 import PostgREST.Plan
@@ -252,7 +252,7 @@ failExceedsMaxAffectedPref (Just (PreferMaxAffected n), handling) RSStandard{rsQ
 -- | Set a transaction to roll back if requested
 optionalRollback :: AppConfig -> ApiRequest -> DbHandler ()
 optionalRollback AppConfig{..} ApiRequest{iPreferences = Preferences{..}} = do
-  lift $ when (shouldRollback || (configDbTxRollbackAll && not shouldCommit)) $ do
+  lift $ when (shouldRollback || (isTxRollback && not shouldCommit)) $ do
     SQL.sql "SET CONSTRAINTS ALL IMMEDIATE"
     SQL.condemn
   where
@@ -260,6 +260,8 @@ optionalRollback AppConfig{..} ApiRequest{iPreferences = Preferences{..}} = do
       preferTransaction == Just Commit
     shouldRollback =
       preferTransaction == Just Rollback
+    isTxRollback =
+      configDbTxEnd `elem` [TxRollback, TxRollbackAllowOverride]
 
 -- | We use rowList because when doing EXPLAIN (FORMAT TEXT), the result comes as many rows. FORMAT JSON comes as one.
 planRow :: HD.Result BS.ByteString
